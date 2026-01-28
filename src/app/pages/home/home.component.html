@@ -229,6 +229,7 @@
                 <th>End Atom</th>
                 <th (click)="changeSort('bde')" style="cursor:pointer;">BDE (kcal/mol) {{ sortIndicator('bde') }}</th>
                 <th>Bond Type</th>
+                <th>Source</th>
               </tr>
             </thead>
             <tbody>
@@ -239,6 +240,7 @@
                 <td>{{ bond.end_atom_idx }}</td>
                 <td>{{ bond.bde !== null ? bond.bde.toFixed(2) : 'N/A' }}</td>
                 <td>{{ bond.bond_type || 'Unknown' }}</td>
+                <td>{{ bond.source || 'DeepBDE' }}</td>
               </tr>
             </tbody>
           </table>
@@ -405,10 +407,13 @@
           <th
             style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
             Bond Type</th>
+          <th
+            style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
+            Source</th>
         </tr>
       </thead>
       <tbody>
-        @for( bond of filteredBonds(); track bond.idx){
+        @for( bond of filteredBonds; track bond.idx){
         <tr class="bde-row" style="transition:background 0.2s;">
           <td>{{ bond.idx }}</td>
           <td class="bond-atoms">{{ bond.bond_atoms }}</td>
@@ -419,6 +424,8 @@
             {{ bond.bde !== null ? (bond.bde | number:'1.2-2') : 'N/A' }}
           </td>
           <td class="bond-type">{{ bond.bond_type || 'Unknown' }}</td>
+          <td class="source" [style.color]="bond.source === 'CSB-QB3' ? '#00796b' : '#455a64'"
+            [style.font-weight]="bond.source === 'CSB-QB3' ? '600' : '400'">{{ bond.source || 'DeepBDE' }}</td>
         </tr>
         }
       </tbody>

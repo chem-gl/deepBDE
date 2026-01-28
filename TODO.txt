@@ -1,0 +1,341 @@
+=================================================================================
+FEATURE: CSV BDE OVERRIDE - Reemplazar valores BDE de DeepBDE con valores del CSV
+=================================================================================
+
+DESCRIPCIÓN GENERAL:
+--------------------
+El sistema debe comparar los resultados de predicción de BDE de DeepBDE con valores
+CSB-QB3' almacenados en un archivo CSV. Cuando se encuentra una coincidencia
+exacta (misma molécula padre y mismos fragmentos), se debe REEMPLAZAR el valor BDE
+predicho por DeepBDE con el valor CSB-QB3' del CSV.
+
+ARCHIVO CSV:
+------------
+Ubicación: /public/authors/combined_dataset-14Dec2024_canonical.csv
+Formato: CSV con las siguientes columnas:
+  - Serial: Número de serie
+  - Parentsmiles: SMILES canónico de la molécula padre
+  - Frag1smiles: SMILES del fragmento 1
+  - Frag2smiles: SMILES del fragmento 2
+  - BDE: Valor de BDE CSB-QB3' (número decimal)
+  - BondType: Tipo de enlace (ej: C-N, C-C, C-O, H-N, etc.)
+  - Source: Fuente del dato (ALFABET, CSB-QB3, etc.)
+
+Ejemplo de línea:
+1,NCCCC(=O)O,[CH2]CCC(=O)O,[NH2],86.58438,C-N,ALFABET
+
+TIPOS Y INTERFACES NECESARIAS:
+-------------------------------
+
+1. type BondSource = 'DeepBDE' | 'CSB-QB3';
+   - Indica la fuente del valor BDE
+
+2. type PredictedBondWithSource = PredictedBond & { source?: BondSource };
+   - Extiende PredictedBond añadiendo la propiedad source
+
+3. interface CsvBondEntry {
+     parent: string;      // SMILES canónico de la molécula padre
+     frag1: string;       // SMILES del fragmento 1
+     frag2: string;       // SMILES del fragmento 2
+     bde: number;         // Valor BDE experimental
+     bondType: string;    // Tipo de enlace (C-N, C-C, etc.)
+   }
+
+ESTRUCTURA DE DATOS:
+--------------------
+
+1. csvIndex: Map<string, CsvBondEntry[]>
+   - Key: SMILES canónico de la molécula padre
+   - Value: Array de todas las entradas CSV para esa molécula
+   - Indexado en memoria al cargar el CSV
+
+2. canonicalCache: Map<string, string>
+   - Cache de canonicalización de SMILES usando RDKit
+   - Evita llamadas repetidas a RDKit.get_mol()
+
+FLUJO DE PROCESAMIENTO:
+-----------------------
+
+1. CARGA INICIAL DEL CSV:
+   -------------------------
+   a. Al inicializar el componente, cargar el CSV desde /authors/combined_dataset-14Dec2024_canonical.csv
+   b. Parsear cada línea (split por comas)
+   c. Para cada línea:
+      - Extraer: serial, parent, frag1, frag2, bdeStr, bondType
+      - Convertir bdeStr a número con parseFloat()
+      - Validar que bde sea un número válido (no NaN)
+      - Crear entrada CsvBondEntry con: parent, frag1, frag2, bde, bondType
+      - Indexar por parent SMILES en csvIndex
+   d. Logs importantes:
+      - console.log('[CSV] Lines to parse:', lines.length);
+      - console.log('[CSV] Indexed parents:', this.csvIndex.size);
+
+2. CUANDO SE RECIBE RESPUESTA DE DEEPBDE:
+   ----------------------------------------
+   a. El backend retorna:
+      - response.data.bonds_predicted: Array<PredictedBond>
+      - response.data.smiles_list: Array<string> con fragmentos
+      - response.data.smiles_canonical: SMILES canónico de la molécula
+
+   b. Llamar a applyCsvOverridesWithFragments(parent, bonds, smiles_list)
+   ya que lo unico que cambiara sera el valor todos los demas valores obtenidos de deepbde puede cambiar solo cambiaria el source (nueva columna)
+   c. Para CADA bond en bonds_predicted:
+      i.   Calcular el índice en smiles_list:
+           - smiles_list tiene estructura: 4 líneas de header + 4 líneas por bond
+           - Header (líneas 0-3): información general
+           - Bond N (líneas 4+N*4 a 7+N*4):
+             * Línea 0: IDX: N
+             * Línea 1: F1:  [SMILES_fragmento1]
+             * Línea 2: F2:  [SMILES_fragmento2]
+             * Línea 3: ####################
+           - baseIdx = 4 + (bond_array_index * 4)
+           - f1Line = smiles_list[baseIdx + 1]
+           - f2Line = smiles_list[baseIdx + 2]
+
+      ii.  Extraer SMILES de los fragmentos:
+           - De "F1:  [SMILES]" extraer solo el SMILES (substring(4).trim())
+           - De "F2:  [SMILES]" extraer solo el SMILES
+           - Validar que no sean líneas de error ("[H]", "No fragments", etc.)
+
+      iii. Buscar match en CSV:
+           - Canonicalizar SMILES padre con RDKit
+           - Canonicalizar fragmentos f1 y f2 con RDKit
+           - Buscar en csvIndex.get(parentCanonical)
+           - Para cada entrada CSV:
+             * Canonicalizar entry.frag1 y entry.frag2
+             * Match si: (f1==csvF1 && f2==csvF2) || (f1==csvF2 && f2==csvF1)
+             * El orden no importa porque los fragmentos pueden estar invertidos
+
+      iv.  Si hay match:
+           - Retornar: { ...bond, bde: match.bde, source: 'CSB-QB3' as BondSource }
+           - Log: console.log(`[CSV] ✅ Bond ${idx}: REPLACING DeepBDE=${bond.bde} WITH CSV BDE=${match.bde}`)
+
+      v.   Si NO hay match:
+           - Retornar: { ...bond, source: 'DeepBDE' as BondSource }
+           - Log: console.log(`[CSV] ❌ Bond ${idx}: No fragment match`)
+
+3. ASIGNACIÓN DE RESULTADOS:
+   ---------------------------
+   a. this.bdeResults = { ...response.data, bonds_predicted: bondsWithCsvOverrides }
+   b. Los bonds ahora tienen:
+      - bond.bde: valor del CSV (si hubo match) o valor de DeepBDE (si no hubo match)
+      - bond.source: 'CSB-QB3' (si es del CSV) o 'DeepBDE'
+
+4. VISUALIZACIÓN EN LA TABLA:
+   ----------------------------
+   a. HTML debe mostrar:
+      - Columna "Source": {{ bond.source || 'DeepBDE' }}
+      - Columna "BDE": {{ bond.bde !== null ? (bond.bde | number:'1.2-2') : 'N/A' }}
+
+   b. El método filteredBonds() debe:
+      - Acceder a this.bdeResults.bonds_predicted
+      - Aplicar filtros (hideNaBonds, removeDuplicates, sort)
+      - MANTENER los valores de bond.bde y bond.source sin modificarlos
+
+FUNCIONES CLAVE:
+----------------
+
+1. ensureCsvLoaded(): Promise<void>
+   - Carga y parsea el CSV una sola vez
+   - Indexa por parent SMILES en csvIndex
+   - Usa csvLoadPromise para evitar cargas múltiples
+
+2. canonicalizeSmilesCached(smiles: string): string
+   - Cache wrapper sobre RDKit.get_mol(smiles).get_smiles()
+   - Retorna SMILES canónico o el original si falla
+   - IMPORTANTE: Siempre canonicalizar antes de comparar SMILES
+
+3. applyCsvOverridesWithFragments(
+     parentSmiles: string,
+     bonds: PredictedBond[],
+     smilesList: string[]
+   ): Promise<PredictedBondWithSource[]>
+   - Función principal de matching
+   - Para cada bond, extrae fragmentos y busca en CSV
+   - Retorna array de bonds con valores sobrescritos
+
+4. applyCsvToBondWithFragments(
+     parentSmiles: string,
+     bond: PredictedBond,
+     frag1: string,
+     frag2: string
+   ): PredictedBondWithSource
+   - Busca match exacto por fragmentos
+   - Retorna bond con bde y source actualizados
+
+5. extractFragmentSmiles(line: string): string | null
+   - Extrae SMILES de "F1:  [SMILES]" o "F2:  [SMILES]"
+   - Retorna null para líneas inválidas o errores
+
+CASOS ESPECIALES:
+-----------------
+
+1. SMILES no canónicos:
+   - SIEMPRE canonicalizar con RDKit antes de comparar
+   - Usar cache para evitar recalcular
+
+2. Fragmentos en orden inverso:
+   - El CSV puede tener f1/f2 en cualquier orden
+   - Comparar ambas combinaciones: (f1==csvF1 && f2==csvF2) || (f1==csvF2 && f2==csvF1)
+
+3. Bonds sin fragmentos válidos:
+   - Si bond.is_fragmentable == false
+   - Si smiles_list no tiene las líneas
+   - Retornar con source='DeepBDE'
+
+4. Múltiples entradas CSV para mismo padre:
+   - Una molécula puede tener múltiples bonds en CSV
+   - Usar .find() para obtener el primer match
+   - El match es por fragmentos, no por bondType
+
+VALIDACIONES IMPORTANTES:
+-------------------------
+
+1. Verificar que smiles_list tenga la estructura correcta:
+   - Mínimo 4 líneas de header
+   - 4 líneas por cada bond
+   - Total esperado: 4 + (num_bonds * 4)
+
+2. Validar BDE parseado del CSV:
+   - parseFloat(bdeStr)
+   - Verificar !Number.isNaN(bde)
+
+3. Validar fragmentos extraídos:
+   - No sean null o undefined
+   - No sean strings de error como "[H]", "No fragments"
+
+4. TypeScript types:
+   - SIEMPRE usar 'CSB-QB3' as BondSource
+   - SIEMPRE usar 'DeepBDE' as BondSource
+   - NO usar strings genéricos para source
+
+LOGS DE DEBUG RECOMENDADOS:
+---------------------------
+
+1. Al cargar CSV:
+   [CSV] Lines to parse: 1224321
+   [CSV] Indexed parents: 821406
+
+2. Al procesar smiles_list:
+   [CSV] smiles_list total lines: 64
+   [CSV] First 20 lines of smiles_list: ...
+
+3. Para cada bond:
+   [CSV] Bond 0 (actual idx=0): baseIdx=4, f1Line=[5]="F1:  [OH]", f2Line=[6]="F2:  NCCC[C]=O"
+   [CSV] Bond 0 canonical fragments: f1="[OH]", f2="NCCC[C]=O"
+   [CSV] ✓ FRAGMENT MATCH! CSV: f1="NCCC[C]=O", f2="[OH]" | BondType: C-O
+   [CSV] ✅ Bond 0: REPLACING DeepBDE=111.96 WITH CSV BDE=111.47015
+   [CSV] Bond 0 FINAL: BDE=111.47015, source=CSB-QB3
+
+4. Verificación final:
+   [DEBUG] bdeResults assigned with 15 bonds
+   [DEBUG] Bond 0: BDE=111.47015, source=CSB-QB3, bond_atoms=O-C
+   [DEBUG] Bond 2: BDE=95.96377, source=CSB-QB3, bond_atoms=C-C
+
+5. En filteredBonds():
+   [FILTER] Original bonds from bdeResults: [{idx: 0, bde: 111.47, source: 'CSB-QB3'}, ...]
+   [FILTER] Final filtered bonds: [{idx: 0, bde: 111.47, source: 'CSB-QB3'}, ...]
+
+PROBLEMA COMÚN Y SOLUCIÓN:
+--------------------------
+
+PROBLEMA: Los logs muestran que se encuentra el match y se asigna el valor del CSV,
+          pero la tabla sigue mostrando los valores de DeepBDE.
+
+POSIBLES CAUSAS:
+1. TypeScript infiere 'source' como string en lugar de BondSource
+   SOLUCIÓN: Usar 'CSB-QB3' as BondSource y 'DeepBDE' as BondSource
+
+2. El objeto bond se está copiando incorrectamente
+   SOLUCIÓN: Usar spread operator correctamente: { ...bond, bde: X, source: Y }
+
+3. La tabla no se está actualizando
+   SOLUCIÓN: Verificar que filteredBonds() accede a this.bdeResults.bonds_predicted
+
+4. Los bonds se están modificando después de la asignación
+   SOLUCIÓN: Verificar que sortBonds(), removeDuplicates() no mutan los objetos
+
+CHECKLIST DE IMPLEMENTACIÓN:
+-----------------------------
+
+[ ] 1. Definir tipos: BondSource, PredictedBondWithSource, CsvBondEntry
+[ ] 2. Crear csvIndex: Map<string, CsvBondEntry[]>
+[ ] 3. Crear canonicalCache: Map<string, string>
+[ ] 4. Implementar ensureCsvLoaded()
+[ ] 5. Implementar canonicalizeSmilesCached()
+[ ] 6. Implementar extractFragmentSmiles()
+[ ] 7. Implementar applyCsvToBondWithFragments()
+[ ] 8. Implementar applyCsvOverridesWithFragments()
+[ ] 9. Modificar getBDE() para llamar applyCsvOverridesWithFragments()
+[ ] 10. Actualizar HTML para mostrar bond.source
+[ ] 11. Verificar que filteredBonds() preserva valores
+[ ] 12. Añadir logs de debug en todos los pasos críticos
+[ ] 13. Probar con molécula conocida (NCCCC(=O)O)
+[ ] 14. Verificar que tabla muestra valores del CSV correctamente
+[ ] 15. Verificar que source dice 'CSB-QB3' cuando hay match
+
+EJEMPLO COMPLETO DE USO:
+------------------------
+
+Molécula: NCCCC(=O)O (ácido gamma-aminobutírico)
+
+CSV tiene:
+1,NCCCC(=O)O,[CH2]CCC(=O)O,[NH2],86.58438,C-N,ALFABET
+2,NCCCC(=O)O,[CH2]CC(=O)O,[CH2]N,83.22282,C-C,ALFABET
+3,NCCCC(=O)O,[CH2]C(=O)O,[CH2]CN,87.54761,C-C,ALFABET
+4,NCCCC(=O)O,O=[C]O,[CH2]CCN,95.96377,C-C,ALFABET
+5,NCCCC(=O)O,NCCC[C]=O,[OH],111.47015,C-O,ALFABET
+
+Resultado esperado:
+Bond 0 (O-C): BDE=111.47, source=CSB-QB3  ← Del CSV (entrada 5)
+Bond 1 (C-O): BDE=null, source=DeepBDE    ← No fragmentable
+Bond 2 (C-C): BDE=95.96, source=CSB-QB3   ← Del CSV (entrada 4)
+Bond 3 (C-C): BDE=87.55, source=CSB-QB3   ← Del CSV (entrada 3)
+Bond 4 (C-C): BDE=83.22, source=CSB-QB3   ← Del CSV (entrada 2)
+Bond 5 (C-N): BDE=86.58, source=CSB-QB3   ← Del CSV (entrada 1)
+
+ESTRUCTURA DEL PROYECTO:
+------------------------
+
+/home/cesar/Documents/Proyectos/DeepBDE-web/
+├── public/
+│   └── authors/
+│       └── combined_dataset-14Dec2024_canonical.csv  ← Archivo CSV
+├── src/
+│   └── app/
+│       └── pages/
+│           └── home/
+│               ├── home.component.ts      ← Lógica de matching
+│               ├── home.component.html    ← Tabla de resultados
+│               └── home.component.scss
+└── angular-client/
+    └── model/
+        └── predictedBond.ts               ← Interfaz base
+
+NOTAS FINALES:
+--------------
+
+1. El matching DEBE ser por fragmentos, NO por bondType
+   - bondType puede diferir entre CSV y DeepBDE
+   - Los fragmentos SMILES son únicos y precisos
+
+2. SIEMPRE canonicalizar SMILES antes de comparar
+   - Diferentes representaciones del mismo SMILES deben dar match
+   - Ejemplo: "C(O)C" y "CCO" son el mismo SMILES
+
+3. El orden de los fragmentos NO importa
+   - f1/f2 pueden estar invertidos en CSV vs DeepBDE
+   - Comparar ambas combinaciones
+
+4. Los valores BDE del CSV REEMPLAZAN completamente a los de DeepBDE
+   - NO promediar
+   - NO combinar
+   - Reemplazo directo cuando hay match
+
+5. La columna "Source" es CRÍTICA para debugging
+   - Permite verificar visualmente qué valores vienen del CSV
+   - Debe aparecer en la tabla
+
+=================================================================================
+FIN DEL TODO
+=================================================================================

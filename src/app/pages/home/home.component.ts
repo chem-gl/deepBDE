@@ -15,6 +15,19 @@ import {
   V1Service,
 } from '../../../../angular-client';
 import { PredictedBond } from '../../../../angular-client/model/predictedBond';
+
+// CSV BDE Override Types
+type BondSource = 'DeepBDE' | 'CSB-QB3';
+type PredictedBondWithSource = PredictedBond & { source?: BondSource };
+
+interface CsvBondEntry {
+  parent: string;      // SMILES canónico de la molécula padre
+  frag1: string;       // SMILES del fragmento 1
+  frag2: string;       // SMILES del fragmento 2
+  bde: number;         // Valor BDE experimental
+  bondType: string;    // Tipo de enlace (C-N, C-C, etc.)
+}
+
 export class ZoomPanState {
   public zoom = 1.0;
   public panX = 0;
@@ -128,12 +141,20 @@ export class HomeComponent {
   private canonicalSmilesCache = new Map<string, any>();
   private bdeResultsCache = new Map<string, any>();
 
+  // CSV BDE Override infrastructure
+  private csvIndex = new Map<string, CsvBondEntry[]>();
+  private smilesCanonicalCache = new Map<string, string>();
+  private csvLoadPromise: Promise<void> | null = null;
+  private csvLoaded = false;
+  private processingCsvOverrides = false;
+  private _filteredBondsCache: PredictedBondWithSource[] | null = null;
+
   private async getCanonicalSmiles(smiles: string): Promise<any> {
     if (this.canonicalSmilesCache.has(smiles)) {
       return this.canonicalSmilesCache.get(smiles);
     }
     const response = await firstValueFrom(
-      this.v1Service.v1PredictInfoSmileCanonicalCreate({ smiles })
+      this.v1Service.v1PredictInfoSmileCanonicalCreate({ smiles }),
     );
     this.canonicalSmilesCache.set(smiles, response);
     return response;
@@ -141,7 +162,7 @@ export class HomeComponent {
 
   private async getBdeResults(
     smiles: string,
-    molecule_id: string
+    molecule_id: string,
   ): Promise<any> {
     const key = `${smiles}|${molecule_id}`;
     if (this.bdeResultsCache.has(key)) {
@@ -154,11 +175,307 @@ export class HomeComponent {
         export_smiles: true,
         export_xyz: true,
         bonds_idx: [],
-      })
+      }),
     );
     this.bdeResultsCache.set(key, response);
     return response;
   }
+
+  // CSV BDE Override Methods
+  private async ensureCsvLoaded(): Promise<void> {
+    if (this.csvLoaded) return;
+    if (this.csvLoadPromise) return this.csvLoadPromise;
+
+    this.csvLoadPromise = (async () => {
+      try {
+        const response = await fetch(
+          '/authors/combined_dataset-14Dec2024_canonical.csv',
+        );
+        if (!response.ok) {
+          console.error('[CSV] Failed to load CSV file:', response.statusText);
+          return;
+        }
+        const csvText = await response.text();
+        const lines = csvText.split('\n').filter((line) => line.trim());
+        console.log('[CSV] Lines to parse:', lines.length);
+
+        // Skip header (first line)
+        for (let i = 1; i < lines.length; i++) {
+          const parts = lines[i].split(',');
+          if (parts.length < 6) continue;
+
+          const [serial, parent, frag1, frag2, bdeStr, bondType] = parts;
+          const bde = parseFloat(bdeStr);
+
+          if (Number.isNaN(bde)) continue;
+
+          // CSV parent SMILES are already canonical, no need to canonicalize again
+          const entry: CsvBondEntry = {
+            parent: parent.trim(),
+            frag1: frag1.trim(),
+            frag2: frag2.trim(),
+            bde,
+            bondType: bondType.trim(),
+          };
+
+          if (!this.csvIndex.has(entry.parent)) {
+            this.csvIndex.set(entry.parent, []);
+          }
+          this.csvIndex.get(entry.parent)!.push(entry);
+        }
+
+        console.log('[CSV] Indexed parents:', this.csvIndex.size);
+        this.csvLoaded = true;
+      } catch (error) {
+        console.error('[CSV] Error loading CSV:', error);
+      }
+    })();
+
+    return this.csvLoadPromise;
+  }
+
+  private canonicalizeSmilesCached(smiles: string): string {
+    if (this.smilesCanonicalCache.has(smiles)) {
+      return this.smilesCanonicalCache.get(smiles)!;
+    }
+
+    if (!this.RDKit) return smiles;
+
+    try {
+      const mol = this.RDKit.get_mol(smiles);
+      if (mol && mol.is_valid()) {
+        const canonical = mol.get_smiles();
+        this.smilesCanonicalCache.set(smiles, canonical);
+        return canonical;
+      }
+    } catch (error) {
+      // Ignore errors, return original
+    }
+
+    this.smilesCanonicalCache.set(smiles, smiles);
+    return smiles;
+  }
+
+  private extractFragmentSmiles(line: string): string | null {
+    if (!line || line.trim() === '') return null;
+
+    // Expected format: "F1:  [SMILES]" or "F2:  [SMILES]"
+    if (!line.startsWith('F1:') && !line.startsWith('F2:')) return null;
+
+    const smiles = line.substring(4).trim();
+
+    // Filter out error cases (but allow [H] as it's a valid radical)
+    if (
+      smiles.includes('No fragments') ||
+      smiles.includes('Error') ||
+      smiles === ''
+    ) {
+      return null;
+    }
+
+    return smiles;
+  }
+
+  private applyCsvToBondWithFragments(
+    parentSmiles: string,
+    bond: PredictedBond,
+    frag1: string,
+    frag2: string,
+  ): PredictedBondWithSource {
+    console.log(`[BDE FLOW] >>>>> applyCsvToBondWithFragments called <<<<<`);
+    console.log(
+      `[BDE FLOW] Parent SMILES for lookup (original): "${parentSmiles}"`,
+    );
+
+    // Canonicalize parent SMILES to match CSV index (removes explicit H)
+    const parentCanonical = this.canonicalizeSmilesCached(parentSmiles);
+    console.log(
+      `[BDE FLOW] Parent SMILES for lookup (canonical): "${parentCanonical}"`,
+    );
+    console.log(`[BDE FLOW] Fragment 1 (input): "${frag1}"`);
+    console.log(`[BDE FLOW] Fragment 2 (input): "${frag2}"`);
+    console.log(`[BDE FLOW] Current bond BDE (from ML): ${bond.bde}`);
+    console.log(`[BDE FLOW] Current bond atoms: ${bond.bond_atoms}`);
+    console.log(`[BDE FLOW] Checking if parent SMILES exists in CSV index...`);
+    console.log(
+      `[BDE FLOW] csvIndex.has("${parentCanonical}") = ${this.csvIndex.has(parentCanonical)}`,
+    );
+
+    const entries = this.csvIndex.get(parentCanonical);
+    if (!entries) {
+      console.log(
+        `[BDE FLOW] ❌ No CSV entries found for parent SMILES: "${parentCanonical}"`,
+      );
+      console.log(`[BDE FLOW] Bond will keep ML predicted BDE: ${bond.bde}`);
+      return { ...bond, source: 'DeepBDE' as BondSource };
+    }
+
+    console.log(
+      `[BDE FLOW] ✓ Found ${entries.length} CSV entries for this parent SMILES`,
+    );
+
+    // Canonicalize fragments for comparison
+    console.log('[BDE FLOW] Canonicalizing fragments...');
+    const f1Canonical = this.canonicalizeSmilesCached(frag1);
+    const f2Canonical = this.canonicalizeSmilesCached(frag2);
+    console.log(`[BDE FLOW] Fragment 1 canonical: "${f1Canonical}"`);
+    console.log(`[BDE FLOW] Fragment 2 canonical: "${f2Canonical}"`);
+
+    console.log('[BDE FLOW] Searching for fragment match in CSV entries...');
+    const match = entries.find((entry, idx) => {
+      const csvF1 = this.canonicalizeSmilesCached(entry.frag1);
+      const csvF2 = this.canonicalizeSmilesCached(entry.frag2);
+
+      console.log(
+        `[BDE FLOW] Checking CSV entry ${idx + 1}/${entries.length}:`,
+      );
+      console.log(`[BDE FLOW]   CSV frag1: "${csvF1}"`);
+      console.log(`[BDE FLOW]   CSV frag2: "${csvF2}"`);
+      console.log(`[BDE FLOW]   CSV BDE: ${entry.bde}`);
+
+      const match1 = f1Canonical === csvF1 && f2Canonical === csvF2;
+      const match2 = f1Canonical === csvF2 && f2Canonical === csvF1;
+
+      console.log(`[BDE FLOW]   Match (f1==csvF1 && f2==csvF2): ${match1}`);
+      console.log(`[BDE FLOW]   Match (f1==csvF2 && f2==csvF1): ${match2}`);
+
+      return match1 || match2;
+    });
+
+    if (match) {
+      console.log(
+        `[BDE FLOW] ✓✓✓ MATCH FOUND! Using CSV BDE=${match.bde} instead of ML BDE=${bond.bde}`,
+      );
+      return { ...bond, bde: match.bde, source: 'CSB-QB3' as BondSource };
+    }
+
+    console.log(
+      `[BDE FLOW] ❌ No matching fragments found in ${entries.length} CSV entries`,
+    );
+    return { ...bond, source: 'DeepBDE' as BondSource };
+  }
+
+  private async applyCsvOverridesWithFragments(
+    parentSmiles: string,
+    bonds: PredictedBond[],
+    smilesList: string[],
+  ): Promise<PredictedBondWithSource[]> {
+    await this.ensureCsvLoaded();
+
+    if (!this.csvLoaded) {
+      console.log('[BDE FLOW] ===== CSV not loaded, skipping overrides =====');
+      return bonds.map((b) => ({ ...b, source: 'DeepBDE' as BondSource }));
+    }
+
+    console.log('[BDE FLOW] ===== applyCsvOverridesWithFragments called =====');
+    console.log('[BDE FLOW] Parent SMILES (canonical from API):', parentSmiles);
+    console.log('[BDE FLOW] Number of bonds to process:', bonds.length);
+    console.log('[BDE FLOW] smiles_list total lines:', smilesList.length);
+    console.log(
+      '[BDE FLOW] CSV index size:',
+      this.csvIndex.size,
+      'parent molecules',
+    );
+    console.log(
+      '[BDE FLOW] First 20 lines of smiles_list:',
+      smilesList.slice(0, 20),
+    );
+
+    const bondsWithSource: PredictedBondWithSource[] = [];
+
+    for (let idx = 0; idx < bonds.length; idx++) {
+      const bond = bonds[idx];
+
+      console.log(`[BDE FLOW] --- Processing bond index ${idx} ---`);
+      console.log(`[BDE FLOW] Bond atoms: ${bond.bond_atoms}`);
+      console.log(`[BDE FLOW] Bond is_fragmentable: ${bond.is_fragmentable}`);
+
+      if (!bond.is_fragmentable) {
+        bondsWithSource.push({ ...bond, source: 'DeepBDE' as BondSource });
+        console.log(
+          `[BDE FLOW] ❌ Bond ${idx}: Not fragmentable, keeping ML BDE`,
+        );
+        continue;
+      }
+
+      // Calculate indices in smiles_list
+      // Structure: 4 header lines + 4 lines per bond
+      const baseIdx = 4 + idx * 4;
+
+      if (baseIdx + 2 >= smilesList.length) {
+        bondsWithSource.push({ ...bond, source: 'DeepBDE' as BondSource });
+        console.log(
+          `[BDE FLOW] ❌ Bond ${idx}: smiles_list too short (baseIdx=${baseIdx}, length=${smilesList.length})`,
+        );
+        continue;
+      }
+
+      const f1Line = smilesList[baseIdx + 1];
+      const f2Line = smilesList[baseIdx + 2];
+
+      console.log(`[BDE FLOW] Bond ${idx}: baseIdx=${baseIdx}`);
+      console.log(`[BDE FLOW]   f1Line=[${baseIdx + 1}]: "${f1Line}"`);
+      console.log(`[BDE FLOW]   f2Line=[${baseIdx + 2}]: "${f2Line}"`);
+
+      const frag1 = this.extractFragmentSmiles(f1Line);
+      const frag2 = this.extractFragmentSmiles(f2Line);
+
+      if (!frag1 || !frag2) {
+        bondsWithSource.push({ ...bond, source: 'DeepBDE' as BondSource });
+        console.log(
+          `[BDE FLOW] ❌ Bond ${idx}: Could not extract fragments from lines`,
+        );
+        continue;
+      }
+
+      console.log(
+        `[BDE FLOW] Extracted fragments: frag1="${frag1}", frag2="${frag2}"`,
+      );
+
+      const bondWithSource = this.applyCsvToBondWithFragments(
+        parentSmiles,
+        bond,
+        frag1,
+        frag2,
+      );
+
+      const frag1Can = this.canonicalizeSmilesCached(frag1);
+      const frag2Can = this.canonicalizeSmilesCached(frag2);
+      console.log(
+        `[BDE FLOW] Bond ${idx} canonical fragments: f1="${frag1Can}", f2="${frag2Can}"`,
+      );
+
+      if (bondWithSource.source === 'CSB-QB3') {
+        console.log(
+          `[BDE FLOW] ✅ Bond ${idx}: REPLACED DeepBDE=${bond.bde} WITH CSV BDE=${bondWithSource.bde}`,
+        );
+      } else {
+        console.log(
+          `[BDE FLOW] ❌ Bond ${idx}: No CSV match, keeping ML BDE=${bond.bde}`,
+        );
+      }
+
+      bondsWithSource.push(bondWithSource);
+    }
+
+    console.log('[BDE FLOW] ===== Finished processing all bonds =====');
+    const csvBondsCount = bondsWithSource.filter(
+      (b) => b.source === 'CSB-QB3',
+    ).length;
+    console.log(
+      `[BDE FLOW] Total bonds with CSV overrides: ${csvBondsCount} / ${bonds.length}`,
+    );
+    bondsWithSource.forEach((bond, idx) => {
+      if (bond.source === 'CSB-QB3') {
+        console.log(
+          `[BDE FLOW] Final Bond ${idx}: BDE=${bond.bde} from CSV (bond_atoms=${bond.bond_atoms})`,
+        );
+      }
+    });
+
+    return bondsWithSource;
+  }
+
   public previewModalOpen = false;
   public previewSvg: SafeHtml | null = null;
   public zoomPanMain = createZoomPanState(1.7);
@@ -259,15 +576,15 @@ export class HomeComponent {
           new Molecule(
             response.data.smiles,
             response.data.molecule_id,
-            response.data.smiles_canonical
-          )
+            response.data.smiles_canonical,
+          ),
         );
 
         let bdeResponse: any;
         try {
           bdeResponse = await this.getBdeResults(
             response.data.smiles,
-            response.data.molecule_id
+            response.data.molecule_id,
           );
         } catch (err) {
           hadAnyError = true;
@@ -303,7 +620,7 @@ export class HomeComponent {
   }
   public constructor(
     private readonly v1Service: V1Service,
-    private readonly sanitizer: DomSanitizer
+    private readonly sanitizer: DomSanitizer,
   ) {
     document.addEventListener('keydown', (event) => {
       if (
@@ -327,7 +644,7 @@ export class HomeComponent {
         this.rdkitReady = true;
       } else {
         console.warn(
-          'initRDKitModule no encontrado en window. Revisa que RDKit_minimal.js esté cargado.'
+          'initRDKitModule no encontrado en window. Revisa que RDKit_minimal.js esté cargado.',
         );
       }
     } catch (err) {
@@ -361,14 +678,14 @@ export class HomeComponent {
       } else {
         this.previewSvg = sanitizeSvg(
           '<div style="color:red;">Invalid molecule</div>',
-          this.sanitizer
+          this.sanitizer,
         );
         this.previewModalOpen = true;
       }
     } catch {
       this.previewSvg = sanitizeSvg(
         '<div style="color:red;">Error generating preview</div>',
-        this.sanitizer
+        this.sanitizer,
       );
       this.previewModalOpen = true;
     }
@@ -379,7 +696,7 @@ export class HomeComponent {
   }
   public trackSmiles(
     index: number,
-    item: { smiles: string; valid: boolean | null }
+    item: { smiles: string; valid: boolean | null },
   ) {
     return item.smiles;
   }
@@ -525,7 +842,7 @@ export class HomeComponent {
         method: 'getSmiles',
         params: {},
       },
-      '*'
+      '*',
     );
   }
   public analyzeMoleculeFromDrawing(): void {
@@ -645,24 +962,85 @@ export class HomeComponent {
     const request: BDEEvaluateRequest = {
       smiles: this.moleculeInfo.smiles_canonical,
       molecule_id: this.moleculeInfo.molecule_id,
-      export_smiles: this.includeSmilesFormat,
+      export_smiles: true, // Always true to enable CSV fragment matching
       export_xyz: this.includeXyzFormat,
       bonds_idx: bonds,
     };
+    console.log('[BDE FLOW] ===== Starting BDE calculation =====');
+    console.log(
+      '[BDE FLOW] Molecule SMILES:',
+      this.moleculeInfo.smiles_canonical,
+    );
+    console.log('[BDE FLOW] Molecule ID:', this.moleculeInfo.molecule_id);
+    console.log(
+      '[BDE FLOW] Bond indices:',
+      bonds && bonds.length > 0 ? bonds : 'all bonds',
+    );
+    console.log('[BDE FLOW] Request params:', request);
     this.v1Service.v1BDEEvaluateCreate(request).subscribe({
-      next: (response) => {
+      next: async (response) => {
         this.loadingBDE = false;
+        console.log('[BDE FLOW] ===== API Response received =====');
+        console.log('[BDE FLOW] Response object:', response);
         if (!response) {
           this.error = 'No data received from the server';
           return;
         }
         if (response.data) {
-          this.bdeResults = response.data;
+          console.log(
+            '[BDE FLOW] Response data.smiles_canonical:',
+            response.data.smiles_canonical,
+          );
+          console.log(
+            '[BDE FLOW] Response data.bonds_predicted count:',
+            response.data.bonds_predicted?.length || 0,
+          );
+          console.log(
+            '[BDE FLOW] Response data.smiles_list count:',
+            response.data.smiles_list?.length || 0,
+          );
+          // Apply CSV overrides if we have fragments (only once)
+          if (
+            !this.processingCsvOverrides &&
+            response.data.bonds_predicted &&
+            response.data.smiles_list &&
+            response.data.smiles_canonical
+          ) {
+            this.processingCsvOverrides = true;
+            console.log(
+              '[BDE FLOW] ===== Starting CSV override processing =====',
+            );
+            const bondsWithCsvOverrides =
+              await this.applyCsvOverridesWithFragments(
+                response.data.smiles_canonical,
+                response.data.bonds_predicted,
+                response.data.smiles_list,
+              );
+            this.bdeResults = {
+              ...response.data,
+              bonds_predicted: bondsWithCsvOverrides,
+            };
+            this._filteredBondsCache = null; // Invalidate cache
+            this.processingCsvOverrides = false;
+            console.log(
+              '[DEBUG] bdeResults assigned with',
+              bondsWithCsvOverrides.length,
+              'bonds',
+            );
+            bondsWithCsvOverrides.slice(0, 5).forEach((bond, idx) => {
+              console.log(
+                `[DEBUG] Bond ${idx}: BDE=${bond.bde}, source=${bond.source}, bond_atoms=${bond.bond_atoms}`,
+              );
+            });
+          } else {
+            this.bdeResults = response.data;
+            this._filteredBondsCache = null; // Invalidate cache
+          }
           this.error = null;
           if (this.bdeResults.image_svg) {
             this.bdeResultsSanitizedSvg = sanitizeSvg(
               this.bdeResults.image_svg,
-              this.sanitizer
+              this.sanitizer,
             );
           } else {
             this.bdeResultsSanitizedSvg = null;
@@ -746,7 +1124,7 @@ export class HomeComponent {
         if (!this.svgImage && svgData) {
           console.log(
             'Empty or invalid SVG. Data received:',
-            svgData.substring(0, 100)
+            svgData.substring(0, 100),
           );
         }
         this.loadingInfo = false;
@@ -763,13 +1141,13 @@ export class HomeComponent {
     let svgToDownload = this.svgImage;
     let filename = `molecular_structure_${this.smilesInput.replace(
       /[^a-zA-Z0-9]/g,
-      '_'
+      '_',
     )}.svg`;
     if (useBdeResults && this.bdeResults?.image_svg) {
       svgToDownload = this.bdeResults.image_svg;
       filename = `bde_result_structure_${this.smilesInput.replace(
         /[^a-zA-Z0-9]/g,
-        '_'
+        '_',
       )}.svg`;
     }
     if (!svgToDownload) {
@@ -798,13 +1176,13 @@ export class HomeComponent {
     let svgToDownload = this.svgImage;
     let filename = `molecular_structure_${this.smilesInput.replace(
       /[^a-zA-Z0-9]/g,
-      '_'
+      '_',
     )}.png`;
     if (useBdeResults && this.bdeResults?.image_svg) {
       svgToDownload = this.bdeResults.image_svg;
       filename = `bde_result_structure_${this.smilesInput.replace(
         /[^a-zA-Z0-9]/g,
-        '_'
+        '_',
       )}.png`;
     }
     if (!svgToDownload) {
@@ -850,7 +1228,7 @@ export class HomeComponent {
             }
           },
           'image/png',
-          0.95
+          0.95,
         );
       };
       img.onerror = () => {
@@ -878,7 +1256,7 @@ export class HomeComponent {
       link.href = url;
       link.download = `bde_results_smiles_${this.smilesInput.replace(
         /[^a-zA-Z0-9]/g,
-        '_'
+        '_',
       )}.txt`;
       document.body.appendChild(link);
       link.click();
@@ -903,7 +1281,7 @@ export class HomeComponent {
       link.href = url;
       link.download = `bde_results_xyz_${this.smilesInput.replace(
         /[^a-zA-Z0-9]/g,
-        '_'
+        '_',
       )}.txt`;
       document.body.appendChild(link);
       link.click();
@@ -933,7 +1311,7 @@ export class HomeComponent {
       link.href = url;
       link.download = `bde_results_table_${this.smilesInput.replace(
         /[^a-zA-Z0-9]/g,
-        '_'
+        '_',
       )}.csv`;
       document.body.appendChild(link);
       link.click();
@@ -953,7 +1331,7 @@ export class HomeComponent {
         const moleculeName = result.smiles || 'unknown';
         const fileName = `${moleculeName.replace(
           /[^a-zA-Z0-9]/g,
-          '_'
+          '_',
         )}.${format}`;
         const content =
           format === 'smiles'
@@ -998,7 +1376,7 @@ export class HomeComponent {
   }
   public onWheel(
     result: ExtendedFragmentResponseData,
-    event: WheelEvent
+    event: WheelEvent,
   ): void {
     if (!result.zoomPan) result.zoomPan = createZoomPanState(1);
     event.preventDefault();
@@ -1007,7 +1385,7 @@ export class HomeComponent {
   }
   public startPan(
     result: ExtendedFragmentResponseData,
-    event: MouseEvent
+    event: MouseEvent,
   ): void {
     if (!result.zoomPan) result.zoomPan = createZoomPanState(1);
     result.zoomPan.startPan(event);
@@ -1062,7 +1440,14 @@ export class HomeComponent {
     URL.revokeObjectURL(url);
   }
   // --- Filtering / duplicate removal for BDE tables ---
-  public hideNaBonds = true; // default checked
+  private _hideNaBonds = true; // default checked
+  public get hideNaBonds(): boolean {
+    return this._hideNaBonds;
+  }
+  public set hideNaBonds(value: boolean) {
+    this._hideNaBonds = value;
+    this._filteredBondsCache = null; // Invalidate cache when filter changes
+  }
   public removeDuplicatedAdjacent = true; // default checked
   // --- Sorting state ---
   public sortKey: 'idx' | 'bde' | 'bond_atoms' = 'idx';
@@ -1122,7 +1507,7 @@ export class HomeComponent {
   }
 
   private removeDuplicateEquivalentBonds(
-    bonds: PredictedBond[]
+    bonds: PredictedBond[],
   ): PredictedBond[] {
     if (!this.removeDuplicatedAdjacent) return bonds;
     const seen = new Set<string>();
@@ -1139,23 +1524,37 @@ export class HomeComponent {
     return result;
   }
 
-  public filteredBonds(): PredictedBond[] {
+  public get filteredBonds(): PredictedBondWithSource[] {
+    // Return cached value if available and hideNaBonds hasn't changed
+    if (this._filteredBondsCache !== null) {
+      return this._filteredBondsCache;
+    }
+
     if (!this.bdeResults?.bonds_predicted) return [];
-    let bonds = this.bdeResults.bonds_predicted;
+    let bonds = this.bdeResults.bonds_predicted as PredictedBondWithSource[];
+    // console.log('[FILTER] Original bonds from bdeResults:', bonds.slice(0, 3).map(b => ({ idx: b.idx, bde: b.bde, source: b.source })));
     if (this.hideNaBonds) bonds = bonds.filter((b) => b.bde !== null);
-    bonds = this.removeDuplicateEquivalentBonds(bonds);
-    bonds = this.sortBonds(bonds);
+    bonds = this.removeDuplicateEquivalentBonds(
+      bonds,
+    ) as PredictedBondWithSource[];
+    bonds = this.sortBonds(bonds) as PredictedBondWithSource[];
+    // console.log('[FILTER] Final filtered bonds:', bonds.slice(0, 3).map(b => ({ idx: b.idx, bde: b.bde, source: b.source })));
+
+    // Cache the result
+    this._filteredBondsCache = bonds;
     return bonds;
   }
 
   public getFilteredBonds(
-    result: ExtendedFragmentResponseData
-  ): PredictedBond[] {
+    result: ExtendedFragmentResponseData,
+  ): PredictedBondWithSource[] {
     if (!result?.bonds_predicted) return [];
-    let bonds = result.bonds_predicted;
+    let bonds = result.bonds_predicted as PredictedBondWithSource[];
     if (this.hideNaBonds) bonds = bonds.filter((b) => b.bde !== null);
-    bonds = this.removeDuplicateEquivalentBonds(bonds);
-    bonds = this.sortBonds(bonds);
+    bonds = this.removeDuplicateEquivalentBonds(
+      bonds,
+    ) as PredictedBondWithSource[];
+    bonds = this.sortBonds(bonds) as PredictedBondWithSource[];
     return bonds;
   }
 }
