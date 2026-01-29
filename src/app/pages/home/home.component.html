@@ -173,6 +173,9 @@
       <span class="noButton " (click)="downloadReports('xyz')" style="margin-left: 1rem;">
         Download XYZ Reports (ZIP)
       </span>
+      <span class="noButton " (click)="downloadBatchBdeTableCSV()" style="margin-left: 1rem;">
+        📊 Download BDE Results Table (CSV)
+      </span>
 
     </div>
     <div class="noButton2" (click)="toggleResults()">
@@ -221,7 +224,7 @@
             </label>
             <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
               <input type="checkbox" [(ngModel)]="showFragments" />
-              <span>Show fragments (SMILES)</span>
+              <span>Show fragments</span>
             </label>
           </div>
           <table class="bde-table">
@@ -231,10 +234,9 @@
                 <th (click)="changeSort('bond_atoms')" style="cursor:pointer;">Bond Atoms {{ sortIndicator('bond_atoms') }}</th>
                 <th (click)="changeSort('bde')" style="cursor:pointer;">DeepBDE (kcal/mol) {{ sortIndicator('bde') }}</th>
                 <th>Fitting Data (kcal/mol)</th>
-                <th>Bond Type</th>
                 @if(showFragments) {
-                <th>Fragment 1 (SMILES)</th>
-                <th>Fragment 2 (SMILES)</th>
+                <th>Fragment 1</th>
+                <th>Fragment 2</th>
                 }
               </tr>
             </thead>
@@ -245,10 +247,27 @@
                 <td>{{ bond.bde !== null ? bond.bde.toFixed(2) : 'N/A' }}</td>
                 <td>{{ bond.fittingDataValue !== null && bond.fittingDataValue !== undefined ? bond.fittingDataValue.toFixed(2) : '-' }}
                 </td>
-                <td>{{ bond.bond_type || 'Unknown' }}</td>
                 @if(showFragments) {
-                <td style="font-size:0.85rem; font-family:monospace; word-break:break-all;">{{ bond.frag1 || '-' }}</td>
-                <td style="font-size:0.85rem; font-family:monospace; word-break:break-all;">{{ bond.frag2 || '-' }}</td>
+                <td class="fragment-cell" (click)="openFragmentModal(bond.frag1 || '')" style="cursor: pointer; padding: 0.5rem;">
+                  <div class="fragment-preview">
+                    @if(bond.frag1 && bond.frag1 !== '-') {
+                    <div class="fragment-svg" [innerHTML]="bond.frag1Svg"></div>
+                    <div class="fragment-smiles">{{ bond.frag1 }}</div>
+                    } @else {
+                    <span>-</span>
+                    }
+                  </div>
+                </td>
+                <td class="fragment-cell" (click)="openFragmentModal(bond.frag2 || '')" style="cursor: pointer; padding: 0.5rem;">
+                  <div class="fragment-preview">
+                    @if(bond.frag2 && bond.frag2 !== '-') {
+                    <div class="fragment-svg" [innerHTML]="bond.frag2Svg"></div>
+                    <div class="fragment-smiles">{{ bond.frag2 }}</div>
+                    } @else {
+                    <span>-</span>
+                    }
+                  </div>
+                </td>
                 }
               </tr>
             </tbody>
@@ -414,16 +433,13 @@
           <th
             style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
             Fitting Data (kcal/mol)</th>
-          <th
-            style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
-            Bond Type</th>
             @if(showFragments) {
           <th
             style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
-            Fragment 1 (SMILES)</th>
+            Fragment 1</th>
           <th
             style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
-            Fragment 2 (SMILES)</th>
+            Fragment 2</th>
             }
         </tr>
       </thead>
@@ -441,13 +457,26 @@
             {{ bond.fittingDataValue !== null && bond.fittingDataValue !== undefined ? (bond.fittingDataValue | number:'1.2-2') :
             '-' }}
           </td>
-          <td class="bond-type">{{ bond.bond_type || 'Unknown' }}</td>
           @if(showFragments) {
-          <td class="fragment" style="font-size:0.85rem; font-family:monospace; word-break:break-all;">
-            {{ bond.frag1 || '-' }}
+          <td class="fragment-cell" (click)="openFragmentModal(bond.frag1 || '')" style="cursor: pointer; padding: 0.5rem;">
+            <div class="fragment-preview">
+              @if(bond.frag1 && bond.frag1 !== '-') {
+              <div class="fragment-svg" [innerHTML]="bond.frag1Svg"></div>
+              <div class="fragment-smiles">{{ bond.frag1 }}</div>
+              } @else {
+              <span>-</span>
+              }
+            </div>
           </td>
-          <td class="fragment" style="font-size:0.85rem; font-family:monospace; word-break:break-all;">
-            {{ bond.frag2 || '-' }}
+          <td class="fragment-cell" (click)="openFragmentModal(bond.frag2 || '')" style="cursor: pointer; padding: 0.5rem;">
+            <div class="fragment-preview">
+              @if(bond.frag2 && bond.frag2 !== '-') {
+              <div class="fragment-svg" [innerHTML]="bond.frag2Svg"></div>
+              <div class="fragment-smiles">{{ bond.frag2 }}</div>
+              } @else {
+              <span>-</span>
+              }
+            </div>
           </td>
           }
         </tr>
@@ -462,8 +491,7 @@
   <div class="results-section">
     <h2 class="molecular-title">Molecular Structure (DeepBDE Predictions Only)</h2>
     <p style="font-size: 0.9rem; color: #666; margin: 0.5rem 0 1rem 0;">
-      This image shows the molecular structure with bond annotations for DeepBDE predictions only. For fitted data values,
-      please refer to the table above.
+      This image shows the molecular structure with bond annotations for DeepBDE predictions only
     </p>
     <div class="image-actions">
       <button (click)="downloadSVGFile(true)" class="btn-download">
@@ -553,4 +581,22 @@
     &copy; {{ currentYear }} DeepBDE. All rights reserved.
   </p>
 </footer>
+<!-- Fragment Modal -->
+@if(fragmentModalOpen) {
+<div class="fragment-modal" (click)="closeFragmentModal()">
+  <div class="fragment-modal-content" (click)="$event.stopPropagation()">
+    <button class="fragment-modal-close" (click)="closeFragmentModal()" aria-label="Close">
+      ✕
+    </button>
+    <h3 class="fragment-modal-title">Fragment Structure</h3>
+    @if(fragmentModalSvg) {
+    <div class="fragment-modal-svg" [innerHTML]="fragmentModalSvg"></div>
+    }
+    <div class="fragment-modal-smiles">
+      <strong>SMILES:</strong>
+      <code>{{ fragmentModalSmiles }}</code>
+    </div>
+  </div>
+</div>
+}
 </div>

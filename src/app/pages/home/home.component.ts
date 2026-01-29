@@ -18,10 +18,12 @@ import { PredictedBond } from '../../../../angular-client/model/predictedBond';
 
 // CSV BDE Override Types
 type PredictedBondWithSource = PredictedBond & {
-  deepbdeValue?: number | null;      // Value from DeepBDE model
-  fittingDataValue?: number | null;  // Value from CSV (Fitting Data)
-  frag1?: string;                    // Fragment 1 SMILES
-  frag2?: string;                    // Fragment 2 SMILES
+  deepbdeValue?: number | null; // Value from DeepBDE model
+  fittingDataValue?: number | null; // Value from CSV (Fitting Data)
+  frag1?: string; // Fragment 1 SMILES
+  frag2?: string; // Fragment 2 SMILES
+  frag1Svg?: SafeHtml | null; // Fragment 1 SVG image
+  frag2Svg?: SafeHtml | null; // Fragment 2 SVG image
 };
 
 interface CsvBondEntry {
@@ -162,7 +164,7 @@ export class HomeComponent {
       return this.canonicalSmilesCache.get(smiles);
     }
     const response = await firstValueFrom(
-      this.v1Service.v1PredictInfoSmileCanonicalCreate({ smiles })
+      this.v1Service.v1PredictInfoSmileCanonicalCreate({ smiles }),
     );
     this.canonicalSmilesCache.set(smiles, response);
     return response;
@@ -170,7 +172,7 @@ export class HomeComponent {
 
   private async getBdeResults(
     smiles: string,
-    molecule_id: string
+    molecule_id: string,
   ): Promise<any> {
     const key = `${smiles}|${molecule_id}`;
     if (this.bdeResultsCache.has(key)) {
@@ -183,7 +185,7 @@ export class HomeComponent {
         export_smiles: true,
         export_xyz: true,
         bonds_idx: [],
-      })
+      }),
     );
     this.bdeResultsCache.set(key, response);
     return response;
@@ -203,15 +205,23 @@ export class HomeComponent {
     console.log('[CSV] ===== Starting CSV load =====');
     this.csvLoadPromise = (async () => {
       try {
-        console.log('[CSV] Fetching CSV file: /authors/combined_dataset-14Dec2024_canonical.csv');
-        const response = await fetch('/authors/combined_dataset-14Dec2024_canonical.csv');
+        console.log(
+          '[CSV] Fetching CSV file: /authors/combined_dataset-14Dec2024_canonical.csv',
+        );
+        const response = await fetch(
+          '/authors/combined_dataset-14Dec2024_canonical.csv',
+        );
         if (!response.ok) {
-          console.error('[CSV] ❌ Failed to load CSV file:', response.statusText, response.status);
+          console.error(
+            '[CSV] ❌ Failed to load CSV file:',
+            response.statusText,
+            response.status,
+          );
           return;
         }
 
         const csvText = await response.text();
-        const lines = csvText.split('\n').filter(line => line.trim());
+        const lines = csvText.split('\n').filter((line) => line.trim());
         console.log('[CSV] ✓ CSV file loaded');
         console.log('[CSV] Total lines (including header):', lines.length);
 
@@ -229,7 +239,9 @@ export class HomeComponent {
           const parts = lines[i].split(',');
 
           if (parts.length < 6) {
-            console.log(`[CSV] Line ${i}: Skipped - not enough columns (${parts.length}/6)`);
+            console.log(
+              `[CSV] Line ${i}: Skipped - not enough columns (${parts.length}/6)`,
+            );
             skippedEntries++;
             continue;
           }
@@ -238,7 +250,9 @@ export class HomeComponent {
           const bde = parseFloat(bdeStr);
 
           if (Number.isNaN(bde)) {
-            console.log(`[CSV] Line ${i}: Skipped - invalid BDE value: "${bdeStr}"`);
+            console.log(
+              `[CSV] Line ${i}: Skipped - invalid BDE value: "${bdeStr}"`,
+            );
             skippedEntries++;
             continue;
           }
@@ -248,7 +262,7 @@ export class HomeComponent {
             frag1: frag1.trim(),
             frag2: frag2.trim(),
             bde,
-            bondType: bondType.trim()
+            bondType: bondType.trim(),
           };
 
           if (!this.csvIndex.has(entry.parent)) {
@@ -259,7 +273,9 @@ export class HomeComponent {
 
           // Log first 5 entries
           if (validEntries <= 5) {
-            console.log(`[CSV] Entry ${validEntries}: parent="${entry.parent.substring(0, 40)}..." bondType="${entry.bondType}" bde=${entry.bde}`);
+            console.log(
+              `[CSV] Entry ${validEntries}: parent="${entry.parent.substring(0, 40)}..." bondType="${entry.bondType}" bde=${entry.bde}`,
+            );
           }
         }
 
@@ -282,17 +298,27 @@ export class HomeComponent {
         });
 
         console.log('[CSV] Total bonds in index:', totalBonds);
-        console.log('[CSV] Average bonds per parent:', (totalBonds / this.csvIndex.size).toFixed(2));
-        console.log('[CSV] Max bonds for single parent:', maxBondsPerParent, `(${parentWithMaxBonds.substring(0, 40)}...)`);
+        console.log(
+          '[CSV] Average bonds per parent:',
+          (totalBonds / this.csvIndex.size).toFixed(2),
+        );
+        console.log(
+          '[CSV] Max bonds for single parent:',
+          maxBondsPerParent,
+          `(${parentWithMaxBonds.substring(0, 40)}...)`,
+        );
 
         // Log bond types available
         const bondTypes = new Set<string>();
-        this.csvIndex.forEach(entries => {
-          entries.forEach(entry => {
+        this.csvIndex.forEach((entries) => {
+          entries.forEach((entry) => {
             bondTypes.add(entry.bondType);
           });
         });
-        console.log('[CSV] Available bond types:', Array.from(bondTypes).sort().join(', '));
+        console.log(
+          '[CSV] Available bond types:',
+          Array.from(bondTypes).sort().join(', '),
+        );
 
         this.csvLoaded = true;
         console.log('[CSV] ===== CSV Load Complete =====');
@@ -307,7 +333,9 @@ export class HomeComponent {
   private canonicalizeSmilesCached(smiles: string): string {
     if (this.smilesCanonicalCache.has(smiles)) {
       const cached = this.smilesCanonicalCache.get(smiles)!;
-      console.log(`[CANON] ✓ Cache hit: "${smiles.substring(0, 30)}..." → "${cached.substring(0, 30)}..."`);
+      console.log(
+        `[CANON] ✓ Cache hit: "${smiles.substring(0, 30)}..." → "${cached.substring(0, 30)}..."`,
+      );
       return cached;
     }
 
@@ -318,11 +346,15 @@ export class HomeComponent {
     }
 
     try {
-      console.log(`[CANON] Canonicalizing: "${smiles.substring(0, 50)}${smiles.length > 50 ? '...' : ''}"`);
+      console.log(
+        `[CANON] Canonicalizing: "${smiles.substring(0, 50)}${smiles.length > 50 ? '...' : ''}"`,
+      );
       const mol = this.RDKit.get_mol(smiles);
       if (mol && mol.is_valid()) {
         const canonical = mol.get_smiles();
-        console.log(`[CANON] ✓ Result: "${canonical.substring(0, 50)}${canonical.length > 50 ? '...' : ''}"`);
+        console.log(
+          `[CANON] ✓ Result: "${canonical.substring(0, 50)}${canonical.length > 50 ? '...' : ''}"`,
+        );
         this.smilesCanonicalCache.set(smiles, canonical);
         return canonical;
       } else {
@@ -337,6 +369,42 @@ export class HomeComponent {
   }
 
   /**
+   * Canonicalizes SMILES without explicit hydrogens to match CSV format
+   * E.g., "[H]/[C](=[C](/[H])[C]..." → "C=C(C)..."
+   */
+  private canonicalizeWithoutHydrogens(smiles: string): string {
+    // Create cache key with suffix to avoid collision with regular canonicalization
+    const cacheKey = `noH:${smiles}`;
+    if (this.smilesCanonicalCache.has(cacheKey)) {
+      return this.smilesCanonicalCache.get(cacheKey)!;
+    }
+
+    if (!this.RDKit) {
+      this.smilesCanonicalCache.set(cacheKey, smiles);
+      return smiles;
+    }
+
+    try {
+      const mol = this.RDKit.get_mol(smiles);
+      if (mol && mol.is_valid()) {
+        // Remove explicit hydrogens and get canonical SMILES
+        mol.remove_hs();
+        const canonical = mol.get_smiles();
+        console.log(
+          `[CANON_NO_H] "${smiles.substring(0, 30)}..." → "${canonical}"`,
+        );
+        this.smilesCanonicalCache.set(cacheKey, canonical);
+        return canonical;
+      }
+    } catch (error) {
+      console.error(`[CANON_NO_H] Error:`, error);
+    }
+
+    this.smilesCanonicalCache.set(cacheKey, smiles);
+    return smiles;
+  }
+
+  /**
    * Searches CSV for Fitting Data using bond atom indices
    * When fragments are not available, we search by parent molecule and bond indices
    */
@@ -344,25 +412,38 @@ export class HomeComponent {
     parentSmiles: string,
     atom1Idx: number,
     atom2Idx: number,
-    bondType: string
+    bondType: string,
   ): CsvBondEntry | null {
     // Create cache key: parent + bondType (most common search pattern)
     const cacheKey = `${parentSmiles}|${bondType}`;
     if (this.csvSearchCache.has(cacheKey)) {
       const cached = this.csvSearchCache.get(cacheKey);
-      console.log(`[CSV_SEARCH] ✓ Cache hit for ${cacheKey.substring(0, 50)}...`);
+      console.log(
+        `[CSV_SEARCH] ✓ Cache hit for ${cacheKey.substring(0, 50)}...`,
+      );
       return cached || null;
     }
 
     // Step 1: Find parent molecule in CSV index (fast lookup)
-    let entries = this.csvIndex.get(parentSmiles);
+    // Try removing explicit hydrogens first (CSV format doesn't have them)
+    const parentNoH = this.canonicalizeWithoutHydrogens(parentSmiles);
+    let entries = this.csvIndex.get(parentNoH);
 
-    // If not found, try canonicalizing the parent SMILES
+    // If not found with H-removed, try original
     if (!entries) {
-      console.log(`[CSV_SEARCH] ⚠️ No direct match for: ${parentSmiles.substring(0, 50)}...`);
+      entries = this.csvIndex.get(parentSmiles);
+    }
+
+    // If still not found, try regular canonicalization
+    if (!entries) {
+      console.log(
+        `[CSV_SEARCH] ⚠️ No direct match for: ${parentSmiles.substring(0, 50)}...`,
+      );
       console.log(`[CSV_SEARCH] Attempting canonicalization...`);
       const canonicalParent = this.canonicalizeSmilesCached(parentSmiles);
-      console.log(`[CSV_SEARCH] Canonical version: ${canonicalParent.substring(0, 50)}...`);
+      console.log(
+        `[CSV_SEARCH] Canonical version: ${canonicalParent.substring(0, 50)}...`,
+      );
 
       entries = this.csvIndex.get(canonicalParent);
       if (entries) {
@@ -371,13 +452,17 @@ export class HomeComponent {
     }
 
     if (!entries) {
-      console.log(`[CSV_SEARCH] ❌ No entries found for parent: ${parentSmiles.substring(0, 50)}...`);
+      console.log(
+        `[CSV_SEARCH] ❌ No entries found for parent: ${parentSmiles.substring(0, 50)}...`,
+      );
       this.csvSearchCache.set(cacheKey, null); // Cache miss
       return null;
     }
 
     console.log(`[CSV_SEARCH] ✓ Found parent molecule in CSV index`);
-    console.log(`[CSV_SEARCH] Searching ${entries.length} entries for bond type: ${bondType}`);
+    console.log(
+      `[CSV_SEARCH] Searching ${entries.length} entries for bond type: ${bondType}`,
+    );
 
     // Step 2: Search for matching bond type within this parent's entries only
     const matchesByType: CsvBondEntry[] = [];
@@ -392,21 +477,36 @@ export class HomeComponent {
     }
 
     if (matchesByType.length === 0) {
-      console.log(`[CSV_SEARCH] ❌ No entries matched bond type: "${bondType}"`);
-      console.log(`[CSV_SEARCH] Available bond types:`, entries.map(e => e.bondType).join(', '));
+      console.log(
+        `[CSV_SEARCH] ❌ No entries matched bond type: "${bondType}"`,
+      );
+      console.log(
+        `[CSV_SEARCH] Available bond types:`,
+        entries.map((e) => e.bondType).join(', '),
+      );
       this.csvSearchCache.set(cacheKey, null); // Cache miss
       return null;
     }
 
-    console.log(`[CSV_SEARCH] ✓ Found ${matchesByType.length} entries with matching bond type`);
+    console.log(
+      `[CSV_SEARCH] ✓ Found ${matchesByType.length} entries with matching bond type`,
+    );
 
     // Step 3: Select best match (first one for now)
     const selectedEntry = matchesByType[0];
     console.log(`[CSV_SEARCH] ✓✓✓ SELECTED Entry BDE = ${selectedEntry.bde}`);
 
     if (matchesByType.length > 1) {
-      console.log(`[CSV_SEARCH] ⚠️ Multiple matches (${matchesByType.length}), using first one`);
-      console.log(`[CSV_SEARCH] Other BDE values:`, matchesByType.slice(1).map(e => e.bde).join(', '));
+      console.log(
+        `[CSV_SEARCH] ⚠️ Multiple matches (${matchesByType.length}), using first one`,
+      );
+      console.log(
+        `[CSV_SEARCH] Other BDE values:`,
+        matchesByType
+          .slice(1)
+          .map((e) => e.bde)
+          .join(', '),
+      );
     }
 
     // Cache successful search
@@ -422,8 +522,8 @@ export class HomeComponent {
 
     const smiles = line.substring(4).trim();
 
-    // Filter out error cases
-    if (smiles === '[H]' || smiles.includes('No fragments') || smiles.includes('Error')) {
+    // Filter out error cases (but allow [H] as valid fragment)
+    if (smiles.includes('No fragments') || smiles.includes('Error')) {
       return null;
     }
 
@@ -439,7 +539,7 @@ export class HomeComponent {
       return bondAtoms || 'Unknown';
     }
 
-    const parts = bondAtoms.split('-').map(s => s.trim());
+    const parts = bondAtoms.split('-').map((s) => s.trim());
     if (parts.length === 2) {
       // Sort atoms alphabetically to match CSV format
       return parts.sort().join('-');
@@ -448,11 +548,29 @@ export class HomeComponent {
     return bondAtoms;
   }
 
+  /**
+   * Calculate fragments for a bond by breaking it using RDKit
+   * Returns [fragment1, fragment2] SMILES strings, or null if calculation fails
+   * Note: This is simplified - RDKit.js doesn't expose bond manipulation in client-side build
+   */
+  private calculateFragmentsWithRDKit(
+    parentSmiles: string,
+    atom1Idx: number,
+    atom2Idx: number,
+  ): [string, string] | null {
+    // For now, return null - fragments are best calculated server-side
+    // The API should provide smiles_list in the response
+    console.log(
+      `[FRAGMENTS] ℹ️ Fragment calculation deferred to CSV data or API response`,
+    );
+    return null;
+  }
+
   private applyCsvToBondWithFragments(
     parentSmiles: string,
     bond: PredictedBond,
     frag1: string,
-    frag2: string
+    frag2: string,
   ): PredictedBondWithSource {
     // parentSmiles is already canonical from API response.data.smiles_canonical
     // CSV parent column is also canonical (as per user)
@@ -464,16 +582,28 @@ export class HomeComponent {
     console.log(`[BDE FLOW] Current bond BDE (from ML): ${bond.bde}`);
     console.log(`[BDE FLOW] Current bond atoms: ${bond.bond_atoms}`);
     console.log(`[BDE FLOW] Checking if parent SMILES exists in CSV index...`);
-    console.log(`[BDE FLOW] csvIndex.has("${parentSmiles}") = ${this.csvIndex.has(parentSmiles)}`);
 
-    const entries = this.csvIndex.get(parentSmiles);
+    // Try with H-removed first (CSV format)
+    const parentNoH = this.canonicalizeWithoutHydrogens(parentSmiles);
+    let entries = this.csvIndex.get(parentNoH);
+
+    // Fallback to original if not found
     if (!entries) {
-      console.log(`[BDE FLOW] ❌ No CSV entries found for parent SMILES: "${parentSmiles}"`);
+      entries = this.csvIndex.get(parentSmiles);
+    }
+
+    if (!entries) {
+      console.log(
+        `[BDE FLOW] ❌ No CSV entries found for parent SMILES: "${parentSmiles}"`,
+      );
+      console.log(`[BDE FLOW] Tried without H: "${parentNoH}"`);
       console.log(`[BDE FLOW] Bond will keep ML predicted BDE: ${bond.bde}`);
       return { ...bond, deepbdeValue: bond.bde, frag1, frag2 };
     }
 
-    console.log(`[BDE FLOW] ✓ Found ${entries.length} CSV entries for this parent SMILES`);
+    console.log(
+      `[BDE FLOW] ✓ Found ${entries.length} CSV entries for parent: "${parentNoH}"`,
+    );
 
     // Canonicalize fragments for comparison
     console.log('[BDE FLOW] Canonicalizing fragments...');
@@ -487,13 +617,15 @@ export class HomeComponent {
       const csvF1 = this.canonicalizeSmilesCached(entry.frag1);
       const csvF2 = this.canonicalizeSmilesCached(entry.frag2);
 
-      console.log(`[BDE FLOW] Checking CSV entry ${idx + 1}/${entries.length}:`);
+      console.log(
+        `[BDE FLOW] Checking CSV entry ${idx + 1}/${entries.length}:`,
+      );
       console.log(`[BDE FLOW]   CSV frag1: "${csvF1}"`);
       console.log(`[BDE FLOW]   CSV frag2: "${csvF2}"`);
       console.log(`[BDE FLOW]   CSV BDE: ${entry.bde}`);
 
-      const match1 = (f1Canonical === csvF1 && f2Canonical === csvF2);
-      const match2 = (f1Canonical === csvF2 && f2Canonical === csvF1);
+      const match1 = f1Canonical === csvF1 && f2Canonical === csvF2;
+      const match2 = f1Canonical === csvF2 && f2Canonical === csvF1;
 
       console.log(`[BDE FLOW]   Match (f1==csvF1 && f2==csvF2): ${match1}`);
       console.log(`[BDE FLOW]   Match (f1==csvF2 && f2==csvF1): ${match2}`);
@@ -502,18 +634,28 @@ export class HomeComponent {
     });
 
     if (match) {
-      console.log(`[BDE FLOW] ✓✓✓ MATCH FOUND! Using CSV BDE=${match.bde} instead of ML BDE=${bond.bde}`);
-      return { ...bond, deepbdeValue: bond.bde, fittingDataValue: match.bde, frag1, frag2 };
+      console.log(
+        `[BDE FLOW] ✓✓✓ MATCH FOUND! Using CSV BDE=${match.bde} instead of ML BDE=${bond.bde}`,
+      );
+      return {
+        ...bond,
+        deepbdeValue: bond.bde,
+        fittingDataValue: match.bde,
+        frag1,
+        frag2,
+      };
     }
 
-    console.log(`[BDE FLOW] ❌ No matching fragments found in ${entries.length} CSV entries`);
+    console.log(
+      `[BDE FLOW] ❌ No matching fragments found in ${entries.length} CSV entries`,
+    );
     return { ...bond, deepbdeValue: bond.bde, frag1, frag2 };
   }
 
   private async applyCsvOverridesWithFragments(
     parentSmiles: string,
     bonds: PredictedBond[],
-    smilesList: string[]
+    smilesList: string[],
   ): Promise<PredictedBondWithSource[]> {
     await this.ensureCsvLoaded();
 
@@ -523,20 +665,28 @@ export class HomeComponent {
 
     if (!this.csvLoaded) {
       console.log('[BDE FLOW] ===== CSV not loaded, skipping overrides =====');
-      return bonds.map(b => ({ ...b, deepbdeValue: b.bde }));
+      return bonds.map((b) => ({ ...b, deepbdeValue: b.bde }));
     }
 
     console.log('[BDE FLOW] ===== applyCsvOverridesWithFragments called =====');
     console.log('[BDE FLOW] Parent SMILES (canonical from API):', parentSmiles);
     console.log('[BDE FLOW] Number of bonds to process:', bonds.length);
     console.log('[BDE FLOW] smiles_list total lines:', smilesList?.length || 0);
-    console.log('[BDE FLOW] CSV index size:', this.csvIndex.size, 'parent molecules');
-    console.log('[BDE FLOW] CSV search will now use cached results within same molecule');
+    console.log(
+      '[BDE FLOW] CSV index size:',
+      this.csvIndex.size,
+      'parent molecules',
+    );
+    console.log(
+      '[BDE FLOW] CSV search will now use cached results within same molecule',
+    );
 
     // Check if we need to use fallback search (no fragment data from server)
     const useFragmentFallback = !smilesList || smilesList.length === 0;
     if (useFragmentFallback) {
-      console.log('[BDE FLOW] ⚠️ smiles_list is empty - will search CSV by parent molecule + bond type');
+      console.log(
+        '[BDE FLOW] ⚠️ smiles_list is empty - will search CSV by parent molecule + bond type',
+      );
     }
 
     const bondsWithSource: PredictedBondWithSource[] = [];
@@ -545,13 +695,17 @@ export class HomeComponent {
       const bond = bonds[idx];
 
       console.log(`[BDE FLOW] --- Processing bond index ${idx} ---`);
-      console.log(`[BDE FLOW] Bond atoms: ${bond.bond_atoms} (${bond.begin_atom_idx}-${bond.end_atom_idx})`);
+      console.log(
+        `[BDE FLOW] Bond atoms: ${bond.bond_atoms} (${bond.begin_atom_idx}-${bond.end_atom_idx})`,
+      );
       console.log(`[BDE FLOW] Bond type: ${bond.bond_type}`);
       console.log(`[BDE FLOW] Bond is_fragmentable: ${bond.is_fragmentable}`);
 
       if (!bond.is_fragmentable) {
         bondsWithSource.push({ ...bond, deepbdeValue: bond.bde });
-        console.log(`[BDE FLOW] ❌ Bond ${idx}: Not fragmentable, keeping ML BDE`);
+        console.log(
+          `[BDE FLOW] ❌ Bond ${idx}: Not fragmentable, keeping ML BDE`,
+        );
         continue;
       }
 
@@ -561,7 +715,7 @@ export class HomeComponent {
 
       if (!useFragmentFallback) {
         // Original path: get fragments from smiles_list
-        const baseIdx = 4 + (idx * 4);
+        const baseIdx = 4 + idx * 4;
 
         if (baseIdx + 2 < (smilesList?.length || 0)) {
           const f1Line = smilesList[baseIdx + 1];
@@ -577,35 +731,72 @@ export class HomeComponent {
           if (extractedFrag1 && extractedFrag2) {
             frag1 = extractedFrag1;
             frag2 = extractedFrag2;
-            const bondResult = this.applyCsvToBondWithFragments(parentSmiles, bond, frag1, frag2);
+            const bondResult = this.applyCsvToBondWithFragments(
+              parentSmiles,
+              bond,
+              frag1,
+              frag2,
+            );
             fittingDataValue = bondResult.fittingDataValue ?? null;
           }
         }
       } else {
         // Fallback: search CSV by parent molecule + bond type extracted from bond_atoms
-        console.log(`[BDE FLOW] Bond ${idx}: Using fallback search (parent + bond type)`);
+        console.log(
+          `[BDE FLOW] Bond ${idx}: Using fallback search (parent + bond type)`,
+        );
         console.log(`[BDE FLOW]   Parent: ${parentSmiles.substring(0, 50)}...`);
         console.log(`[BDE FLOW]   Bond atoms: ${bond.bond_atoms}`);
-        console.log(`[BDE FLOW]   Atom indices: ${bond.begin_atom_idx} - ${bond.end_atom_idx}`);
+        console.log(
+          `[BDE FLOW]   Atom indices: ${bond.begin_atom_idx} - ${bond.end_atom_idx}`,
+        );
 
         // Extract bond type from bond_atoms (e.g., "O-C" → "C-O")
         const csvBondType = this.extractBondTypeFromAtoms(bond.bond_atoms);
-        console.log(`[BDE FLOW]   Bond type to search (from atoms): ${csvBondType}`);
+        console.log(
+          `[BDE FLOW]   Bond type to search (from atoms): ${csvBondType}`,
+        );
 
         const csvEntry = this.searchCsvForBondByIndices(
           parentSmiles,
           bond.begin_atom_idx,
           bond.end_atom_idx,
-          csvBondType
+          csvBondType,
         );
 
         if (csvEntry) {
           fittingDataValue = csvEntry.bde;
           frag1 = csvEntry.frag1;
           frag2 = csvEntry.frag2;
-          console.log(`[BDE FLOW]   Fallback search result: BDE=${fittingDataValue}, Frag1=${frag1.substring(0, 30)}..., Frag2=${frag2.substring(0, 30)}...`);
+          console.log(
+            `[BDE FLOW]   Fallback search result: BDE=${fittingDataValue}, Frag1=${frag1.substring(0, 30)}..., Frag2=${frag2.substring(0, 30)}...`,
+          );
         } else {
           console.log(`[BDE FLOW]   Fallback search result: NOT FOUND`);
+        }
+      }
+
+      // If fragments still not found, calculate them with RDKit
+      if (!frag1 || !frag2) {
+        console.log(
+          `[BDE FLOW] Bond ${idx}: No fragments from CSV/smiles_list, calculating with RDKit...`,
+        );
+        const rdkitFragments = this.calculateFragmentsWithRDKit(
+          parentSmiles,
+          bond.begin_atom_idx,
+          bond.end_atom_idx,
+        );
+
+        if (rdkitFragments) {
+          frag1 = rdkitFragments[0];
+          frag2 = rdkitFragments[1];
+          console.log(
+            `[BDE FLOW] Bond ${idx}: ✓ RDKit fragments calculated: ${frag1.substring(0, 30)}... | ${frag2.substring(0, 30)}...`,
+          );
+        } else {
+          console.log(
+            `[BDE FLOW] Bond ${idx}: ❌ RDKit fragment calculation failed`,
+          );
         }
       }
 
@@ -614,30 +805,43 @@ export class HomeComponent {
         deepbdeValue: bond.bde,
         fittingDataValue: fittingDataValue,
         frag1: frag1 ?? undefined,
-        frag2: frag2 ?? undefined
+        frag2: frag2 ?? undefined,
       };
 
       if (fittingDataValue !== null && fittingDataValue !== undefined) {
-        console.log(`[BDE FLOW] ✅ Bond ${idx}: Found Fitting Data BDE=${fittingDataValue} (ML BDE=${bond.bde})`);
+        console.log(
+          `[BDE FLOW] ✅ Bond ${idx}: Found Fitting Data BDE=${fittingDataValue} (ML BDE=${bond.bde})`,
+        );
       } else {
-        console.log(`[BDE FLOW] ❌ Bond ${idx}: No Fitting Data match, using ML BDE=${bond.bde}`);
+        console.log(
+          `[BDE FLOW] ❌ Bond ${idx}: No Fitting Data match, using ML BDE=${bond.bde}`,
+        );
       }
 
       bondsWithSource.push(bondWithSource);
     }
 
     console.log('[BDE FLOW] ===== Finished processing all bonds =====');
-    const csvBondsCount = bondsWithSource.filter(b => b.fittingDataValue !== undefined && b.fittingDataValue !== null).length;
+    const csvBondsCount = bondsWithSource.filter(
+      (b) => b.fittingDataValue !== undefined && b.fittingDataValue !== null,
+    ).length;
     console.log(`[BDE FLOW] Results Summary:`);
     console.log(`[BDE FLOW]   Total bonds processed: ${bonds.length}`);
     console.log(`[BDE FLOW]   Bonds with Fitting Data: ${csvBondsCount}`);
-    console.log(`[BDE FLOW]   Bonds with only DeepBDE: ${bonds.length - csvBondsCount}`);
-    console.log(`[BDE FLOW]   Success rate: ${((csvBondsCount / bonds.length) * 100).toFixed(1)}%`);
+    console.log(
+      `[BDE FLOW]   Bonds with only DeepBDE: ${bonds.length - csvBondsCount}`,
+    );
+    console.log(
+      `[BDE FLOW]   Success rate: ${((csvBondsCount / bonds.length) * 100).toFixed(1)}%`,
+    );
 
     bondsWithSource.forEach((bond, idx) => {
-      const hasFittingData = bond.fittingDataValue !== undefined && bond.fittingDataValue !== null;
+      const hasFittingData =
+        bond.fittingDataValue !== undefined && bond.fittingDataValue !== null;
       if (hasFittingData) {
-        console.log(`[BDE FLOW] Bond[${idx}] ${bond.bond_atoms}: DeepBDE=${bond.deepbdeValue?.toFixed(2)} | Fitting=${bond.fittingDataValue?.toFixed(2)}`);
+        console.log(
+          `[BDE FLOW] Bond[${idx}] ${bond.bond_atoms}: DeepBDE=${bond.deepbdeValue?.toFixed(2)} | Fitting=${bond.fittingDataValue?.toFixed(2)}`,
+        );
       }
     });
 
@@ -646,6 +850,9 @@ export class HomeComponent {
 
   public previewModalOpen = false;
   public previewSvg: SafeHtml | null = null;
+  public fragmentModalOpen = false;
+  public fragmentModalSvg: SafeHtml | null = null;
+  public fragmentModalSmiles: string = '';
   public zoomPanMain = createZoomPanState(1.7);
   public zoomPanBde = createZoomPanState(1.7);
   public bdeResultsSanitizedSvg: SafeHtml | null = null;
@@ -745,15 +952,15 @@ export class HomeComponent {
           new Molecule(
             response.data.smiles,
             response.data.molecule_id,
-            response.data.smiles_canonical
-          )
+            response.data.smiles_canonical,
+          ),
         );
 
         let bdeResponse: any;
         try {
           bdeResponse = await this.getBdeResults(
             response.data.smiles,
-            response.data.molecule_id
+            response.data.molecule_id,
           );
         } catch (err) {
           hadAnyError = true;
@@ -766,11 +973,45 @@ export class HomeComponent {
           continue;
         }
 
+        // Apply CSV overrides with fragments for batch mode
+        let bondsWithCsvOverrides = bdeResponse.data.bonds_predicted;
+        if (
+          bdeResponse.data.bonds_predicted &&
+          bdeResponse.data.smiles_canonical
+        ) {
+          try {
+            bondsWithCsvOverrides = await this.applyCsvOverridesWithFragments(
+              bdeResponse.data.smiles_canonical,
+              bdeResponse.data.bonds_predicted,
+              bdeResponse.data.smiles_list || [],
+            );
+          } catch (err) {
+            console.error('Error applying CSV overrides for', smiles, err);
+            // Continue with original bonds if CSV override fails
+          }
+        }
+
         this.allBDEResults.push({
           ...bdeResponse.data,
+          bonds_predicted: bondsWithCsvOverrides,
           smiles: response.data.smiles,
           zoomPan: new ZoomPanState(1),
           sanitizedSvg: sanitizeSvg(bdeResponse.data.image_svg, this.sanitizer),
+        });
+
+        // Generate SVGs for fragments
+        const lastResult = this.allBDEResults[this.allBDEResults.length - 1];
+        lastResult.bonds_predicted?.forEach((bond: any) => {
+          if (bond.frag1 && bond.frag1 !== '-') {
+            this.generateFragmentSvg(bond.frag1).then((svg) => {
+              bond.frag1Svg = svg;
+            });
+          }
+          if (bond.frag2 && bond.frag2 !== '-') {
+            this.generateFragmentSvg(bond.frag2).then((svg) => {
+              bond.frag2Svg = svg;
+            });
+          }
         });
       }
       if (hadAnyError) {
@@ -789,7 +1030,7 @@ export class HomeComponent {
   }
   public constructor(
     private readonly v1Service: V1Service,
-    private readonly sanitizer: DomSanitizer
+    private readonly sanitizer: DomSanitizer,
   ) {
     document.addEventListener('keydown', (event) => {
       if (
@@ -813,7 +1054,7 @@ export class HomeComponent {
         this.rdkitReady = true;
       } else {
         console.warn(
-          'initRDKitModule no encontrado en window. Revisa que RDKit_minimal.js esté cargado.'
+          'initRDKitModule no encontrado en window. Revisa que RDKit_minimal.js esté cargado.',
         );
       }
     } catch (err) {
@@ -847,14 +1088,14 @@ export class HomeComponent {
       } else {
         this.previewSvg = sanitizeSvg(
           '<div style="color:red;">Invalid molecule</div>',
-          this.sanitizer
+          this.sanitizer,
         );
         this.previewModalOpen = true;
       }
     } catch {
       this.previewSvg = sanitizeSvg(
         '<div style="color:red;">Error generating preview</div>',
-        this.sanitizer
+        this.sanitizer,
       );
       this.previewModalOpen = true;
     }
@@ -863,9 +1104,70 @@ export class HomeComponent {
     this.previewModalOpen = false;
     this.previewSvg = null;
   }
+
+  public async generateFragmentSvg(smiles: string): Promise<SafeHtml | null> {
+    if (!this.rdkitReady || !smiles || smiles === '-') {
+      return null;
+    }
+    try {
+      const mol = (window as any).RDKit.get_mol(smiles);
+      if (!mol || !mol.is_valid()) {
+        mol?.delete();
+        return null;
+      }
+      const svg = mol.get_svg(150, 100);
+      mol.delete();
+      return sanitizeSvg(svg, this.sanitizer);
+    } catch (error) {
+      console.error('Error generating fragment SVG:', error);
+      return null;
+    }
+  }
+
+  private generateFragmentSvgsForBonds(): void {
+    if (!this.bdeResults?.bonds_predicted) return;
+
+    this.bdeResults.bonds_predicted.forEach((bond: any) => {
+      if (bond.frag1 && bond.frag1 !== '-') {
+        this.generateFragmentSvg(bond.frag1).then((svg) => {
+          bond.frag1Svg = svg;
+        });
+      }
+      if (bond.frag2 && bond.frag2 !== '-') {
+        this.generateFragmentSvg(bond.frag2).then((svg) => {
+          bond.frag2Svg = svg;
+        });
+      }
+    });
+  }
+
+  public async openFragmentModal(smiles: string): Promise<void> {
+    if (!smiles || smiles === '-') return;
+    this.fragmentModalSmiles = smiles;
+    try {
+      const mol = (window as any).RDKit.get_mol(smiles);
+      if (!mol || !mol.is_valid()) {
+        mol?.delete();
+        return;
+      }
+      const svg = mol.get_svg(400, 300);
+      mol.delete();
+      this.fragmentModalSvg = sanitizeSvg(svg, this.sanitizer);
+      this.fragmentModalOpen = true;
+    } catch (error) {
+      console.error('Error generating fragment SVG:', error);
+    }
+  }
+
+  public closeFragmentModal(): void {
+    this.fragmentModalOpen = false;
+    this.fragmentModalSvg = null;
+    this.fragmentModalSmiles = '';
+  }
+
   public trackSmiles(
     index: number,
-    item: { smiles: string; valid: boolean | null }
+    item: { smiles: string; valid: boolean | null },
   ) {
     return item.smiles;
   }
@@ -1011,7 +1313,7 @@ export class HomeComponent {
         method: 'getSmiles',
         params: {},
       },
-      '*'
+      '*',
     );
   }
   public analyzeMoleculeFromDrawing(): void {
@@ -1137,14 +1439,20 @@ export class HomeComponent {
     const request: BDEEvaluateRequest = {
       smiles: this.moleculeInfo.smiles_canonical,
       molecule_id: this.moleculeInfo.molecule_id,
-      export_smiles: this.includeSmilesFormat,
+      export_smiles: true, // Always export SMILES to get fragments
       export_xyz: this.includeXyzFormat,
       bonds_idx: bonds,
     };
     console.log('[BDE FLOW] ===== Starting BDE calculation =====');
-    console.log('[BDE FLOW] Molecule SMILES:', this.moleculeInfo.smiles_canonical);
+    console.log(
+      '[BDE FLOW] Molecule SMILES:',
+      this.moleculeInfo.smiles_canonical,
+    );
     console.log('[BDE FLOW] Molecule ID:', this.moleculeInfo.molecule_id);
-    console.log('[BDE FLOW] Bond indices:', (bonds && bonds.length > 0) ? bonds : 'all bonds');
+    console.log(
+      '[BDE FLOW] Bond indices:',
+      bonds && bonds.length > 0 ? bonds : 'all bonds',
+    );
     console.log('[BDE FLOW] Request params:', request);
     this.v1Service.v1BDEEvaluateCreate(request).subscribe({
       next: async (response) => {
@@ -1156,36 +1464,65 @@ export class HomeComponent {
           return;
         }
         if (response.data) {
-          console.log('[BDE FLOW] Response data.smiles_canonical:', response.data.smiles_canonical);
-          console.log('[BDE FLOW] Response data.bonds_predicted count:', response.data.bonds_predicted?.length || 0);
-          console.log('[BDE FLOW] Response data.smiles_list count:', response.data.smiles_list?.length || 0);
+          console.log(
+            '[BDE FLOW] Response data.smiles_canonical:',
+            response.data.smiles_canonical,
+          );
+          console.log(
+            '[BDE FLOW] Response data.bonds_predicted count:',
+            response.data.bonds_predicted?.length || 0,
+          );
+          console.log(
+            '[BDE FLOW] Response data.smiles_list count:',
+            response.data.smiles_list?.length || 0,
+          );
           // Apply CSV overrides - process bonds regardless of smiles_list availability (even if empty)
-          if (!this.processingCsvOverrides && response.data.bonds_predicted && response.data.smiles_canonical) {
+          if (
+            !this.processingCsvOverrides &&
+            response.data.bonds_predicted &&
+            response.data.smiles_canonical
+          ) {
             this.processingCsvOverrides = true;
-            console.log('[BDE FLOW] ===== Starting CSV override processing =====');
-            const bondsWithCsvOverrides = await this.applyCsvOverridesWithFragments(
-              response.data.smiles_canonical,
-              response.data.bonds_predicted,
-              response.data.smiles_list || []
+            console.log(
+              '[BDE FLOW] ===== Starting CSV override processing =====',
             );
-            this.bdeResults = { ...response.data, bonds_predicted: bondsWithCsvOverrides };
+            const bondsWithCsvOverrides =
+              await this.applyCsvOverridesWithFragments(
+                response.data.smiles_canonical,
+                response.data.bonds_predicted,
+                response.data.smiles_list || [],
+              );
+            this.bdeResults = {
+              ...response.data,
+              bonds_predicted: bondsWithCsvOverrides,
+            };
             this._filteredBondsCache = null; // Invalidate cache
             this.processingCsvOverrides = false;
             this.loadingBDE = false; // Done with CSV processing
-            console.log('[DEBUG] bdeResults assigned with', bondsWithCsvOverrides.length, 'bonds');
+            console.log(
+              '[DEBUG] bdeResults assigned with',
+              bondsWithCsvOverrides.length,
+              'bonds',
+            );
             bondsWithCsvOverrides.slice(0, 5).forEach((bond, idx) => {
-              console.log(`[DEBUG] Bond ${idx}: BDE=${bond.bde}, deepbdeValue=${bond.deepbdeValue}, fittingDataValue=${bond.fittingDataValue}, bond_atoms=${bond.bond_atoms}`);
+              console.log(
+                `[DEBUG] Bond ${idx}: BDE=${bond.bde}, deepbdeValue=${bond.deepbdeValue}, fittingDataValue=${bond.fittingDataValue}, bond_atoms=${bond.bond_atoms}`,
+              );
             });
           } else {
             this.bdeResults = response.data;
             this._filteredBondsCache = null; // Invalidate cache
             this.loadingBDE = false; // Done - no CSV processing needed
           }
+
+          // Generate SVGs for fragments
+          this.generateFragmentSvgsForBonds();
+
           this.error = null;
           if (this.bdeResults.image_svg) {
             this.bdeResultsSanitizedSvg = sanitizeSvg(
               this.bdeResults.image_svg,
-              this.sanitizer
+              this.sanitizer,
             );
           } else {
             this.bdeResultsSanitizedSvg = null;
@@ -1269,7 +1606,7 @@ export class HomeComponent {
         if (!this.svgImage && svgData) {
           console.log(
             'Empty or invalid SVG. Data received:',
-            svgData.substring(0, 100)
+            svgData.substring(0, 100),
           );
         }
         this.loadingInfo = false;
@@ -1286,13 +1623,13 @@ export class HomeComponent {
     let svgToDownload = this.svgImage;
     let filename = `molecular_structure_${this.smilesInput.replace(
       /[^a-zA-Z0-9]/g,
-      '_'
+      '_',
     )}.svg`;
     if (useBdeResults && this.bdeResults?.image_svg) {
       svgToDownload = this.bdeResults.image_svg;
       filename = `bde_result_structure_${this.smilesInput.replace(
         /[^a-zA-Z0-9]/g,
-        '_'
+        '_',
       )}.svg`;
     }
     if (!svgToDownload) {
@@ -1321,13 +1658,13 @@ export class HomeComponent {
     let svgToDownload = this.svgImage;
     let filename = `molecular_structure_${this.smilesInput.replace(
       /[^a-zA-Z0-9]/g,
-      '_'
+      '_',
     )}.png`;
     if (useBdeResults && this.bdeResults?.image_svg) {
       svgToDownload = this.bdeResults.image_svg;
       filename = `bde_result_structure_${this.smilesInput.replace(
         /[^a-zA-Z0-9]/g,
-        '_'
+        '_',
       )}.png`;
     }
     if (!svgToDownload) {
@@ -1373,7 +1710,7 @@ export class HomeComponent {
             }
           },
           'image/png',
-          0.95
+          0.95,
         );
       };
       img.onerror = () => {
@@ -1401,7 +1738,7 @@ export class HomeComponent {
       link.href = url;
       link.download = `bde_results_smiles_${this.smilesInput.replace(
         /[^a-zA-Z0-9]/g,
-        '_'
+        '_',
       )}.txt`;
       document.body.appendChild(link);
       link.click();
@@ -1426,7 +1763,7 @@ export class HomeComponent {
       link.href = url;
       link.download = `bde_results_xyz_${this.smilesInput.replace(
         /[^a-zA-Z0-9]/g,
-        '_'
+        '_',
       )}.txt`;
       document.body.appendChild(link);
       link.click();
@@ -1456,7 +1793,7 @@ export class HomeComponent {
       link.href = url;
       link.download = `bde_results_table_${this.smilesInput.replace(
         /[^a-zA-Z0-9]/g,
-        '_'
+        '_',
       )}.csv`;
       document.body.appendChild(link);
       link.click();
@@ -1476,7 +1813,7 @@ export class HomeComponent {
         const moleculeName = result.smiles || 'unknown';
         const fileName = `${moleculeName.replace(
           /[^a-zA-Z0-9]/g,
-          '_'
+          '_',
         )}.${format}`;
         const content =
           format === 'smiles'
@@ -1502,6 +1839,65 @@ export class HomeComponent {
     } finally {
     }
   }
+
+  /**
+   * Download BDE results table for batch SMILES analysis as CSV
+   * Includes: Molecule, Bond Index, Bond Atoms, DeepBDE, Fitting Data, Fragment 1, Fragment 2
+   */
+  public downloadBatchBdeTableCSV(): void {
+    if (!this.allBDEResults || this.allBDEResults.length === 0) {
+      this.error = 'No BDE data available for download';
+      return;
+    }
+
+    try {
+      let csvContent =
+        'Molecule,Bond Index,Bond Atoms,DeepBDE (kcal/mol),Fitting Data (kcal/mol),Fragment 1 (SMILES),Fragment 2 (SMILES)\n';
+
+      // Iterate through each molecule result
+      for (const result of this.allBDEResults) {
+        const moleculeSmiles = result.smiles || 'Unknown';
+
+        if (result.bonds_predicted) {
+          // For each bond in the molecule
+          result.bonds_predicted.forEach((bondAny: any) => {
+            const bond = bondAny as PredictedBondWithSource;
+            const deepbdeValue =
+              bond.bde !== null ? bond.bde.toFixed(2) : 'N/A';
+            const fittingDataValue =
+              bond.fittingDataValue !== null &&
+              bond.fittingDataValue !== undefined
+                ? bond.fittingDataValue.toFixed(2)
+                : '-';
+            const frag1 = bond.frag1 || '-';
+            const frag2 = bond.frag2 || '-';
+
+            // Escape double quotes in SMILES
+            const escapedMolSmiles = `"${moleculeSmiles.replace(/"/g, '""')}"`;
+            const escapedFrag1 = `"${frag1.replace(/"/g, '""')}"`;
+            const escapedFrag2 = `"${frag2.replace(/"/g, '""')}"`;
+
+            csvContent += `${escapedMolSmiles},${bond.idx},"${bond.bond_atoms}",${deepbdeValue},${fittingDataValue},${escapedFrag1},${escapedFrag2}\n`;
+          });
+        }
+      }
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `bde_results_batch_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      this.error = null;
+    } catch (error) {
+      this.error = 'Error downloading BDE results table';
+      console.error('Error downloading batch CSV:', error);
+    }
+  }
+
   public toggleFullscreen(result: ExtendedFragmentResponseData): void {
     if (!result.zoomPan) result.zoomPan = createZoomPanState(1);
     result.zoomPan.isFullscreen = !result.zoomPan.isFullscreen;
@@ -1521,7 +1917,7 @@ export class HomeComponent {
   }
   public onWheel(
     result: ExtendedFragmentResponseData,
-    event: WheelEvent
+    event: WheelEvent,
   ): void {
     if (!result.zoomPan) result.zoomPan = createZoomPanState(1);
     event.preventDefault();
@@ -1530,7 +1926,7 @@ export class HomeComponent {
   }
   public startPan(
     result: ExtendedFragmentResponseData,
-    event: MouseEvent
+    event: MouseEvent,
   ): void {
     if (!result.zoomPan) result.zoomPan = createZoomPanState(1);
     result.zoomPan.startPan(event);
@@ -1586,13 +1982,17 @@ export class HomeComponent {
   }
   // --- Filtering / duplicate removal for BDE tables ---
   private _hideNaBonds = true; // default checked
-  public get hideNaBonds(): boolean { return this._hideNaBonds; }
+  public get hideNaBonds(): boolean {
+    return this._hideNaBonds;
+  }
   public set hideNaBonds(value: boolean) {
     this._hideNaBonds = value;
     this._filteredBondsCache = null; // Invalidate cache when filter changes
   }
   private _removeDuplicatedAdjacent = true; // default checked
-  public get removeDuplicatedAdjacent(): boolean { return this._removeDuplicatedAdjacent; }
+  public get removeDuplicatedAdjacent(): boolean {
+    return this._removeDuplicatedAdjacent;
+  }
   public set removeDuplicatedAdjacent(value: boolean) {
     this._removeDuplicatedAdjacent = value;
     this._filteredBondsCache = null; // Invalidate cache when filter changes
@@ -1608,6 +2008,7 @@ export class HomeComponent {
       this.sortKey = key;
       this.sortDir = 1;
     }
+    this._filteredBondsCache = null; // Invalidate cache when sort changes
   }
   public sortIndicator(key: 'idx' | 'bde' | 'bond_atoms'): string {
     if (this.sortKey !== key) return '□';
@@ -1655,7 +2056,7 @@ export class HomeComponent {
   }
 
   private removeDuplicateEquivalentBonds(
-    bonds: PredictedBond[]
+    bonds: PredictedBond[],
   ): PredictedBond[] {
     if (!this.removeDuplicatedAdjacent) return bonds;
     const seen = new Set<string>();
@@ -1682,7 +2083,9 @@ export class HomeComponent {
     let bonds = this.bdeResults.bonds_predicted as PredictedBondWithSource[];
     // console.log('[FILTER] Original bonds from bdeResults:', bonds.slice(0, 3).map(b => ({ idx: b.idx, bde: b.bde, source: b.source })));
     if (this.hideNaBonds) bonds = bonds.filter((b) => b.bde !== null);
-    bonds = this.removeDuplicateEquivalentBonds(bonds) as PredictedBondWithSource[];
+    bonds = this.removeDuplicateEquivalentBonds(
+      bonds,
+    ) as PredictedBondWithSource[];
     bonds = this.sortBonds(bonds) as PredictedBondWithSource[];
     // console.log('[FILTER] Final filtered bonds:', bonds.slice(0, 3).map(b => ({ idx: b.idx, bde: b.bde, source: b.source })));
 
@@ -1692,12 +2095,14 @@ export class HomeComponent {
   }
 
   public getFilteredBonds(
-    result: ExtendedFragmentResponseData
+    result: ExtendedFragmentResponseData,
   ): PredictedBondWithSource[] {
     if (!result?.bonds_predicted) return [];
     let bonds = result.bonds_predicted as PredictedBondWithSource[];
     if (this.hideNaBonds) bonds = bonds.filter((b) => b.bde !== null);
-    bonds = this.removeDuplicateEquivalentBonds(bonds) as PredictedBondWithSource[];
+    bonds = this.removeDuplicateEquivalentBonds(
+      bonds,
+    ) as PredictedBondWithSource[];
     bonds = this.sortBonds(bonds) as PredictedBondWithSource[];
     return bonds;
   }

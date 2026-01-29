@@ -522,6 +522,18 @@
   color: $text-white;
   font-weight: 600;
   padding: 0.8rem;
+  user-select: none;
+
+  &[style*="cursor:pointer"] {
+    transition: all 0.2s ease;
+    &:hover {
+      background: lighten($primary-blue, 5%);
+      transform: translateY(-1px);
+    }
+    &:active {
+      transform: translateY(0);
+    }
+  }
 }
 .bde-table td {
   padding: 0.7rem;
@@ -595,6 +607,187 @@
   padding-right: 0.5rem;
 }
 
+// --- Fragment Styles ---
+.fragment-cell {
+  padding: 0.8rem !important;
+  background: #fafafa;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+  text-align: center;
+  &:hover {
+    background: #e8f4f8;
+    transform: scale(1.03);
+    box-shadow: 0 2px 8px rgba(0, 51, 102, 0.1);
+  }
+}
+
+.fragment-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 150px;
+  max-width: 180px;
+  margin: 0 auto;
+}
+
+.fragment-svg {
+  min-height: 100px;
+  max-height: 120px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 8px;
+  padding: 0.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  border: 1px solid #e0e0e0;
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 51, 102, 0.15);
+    border-color: $primary-blue;
+  }
+  ::ng-deep svg {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+.fragment-smiles {
+  font-size: 0.65rem;
+  font-family: 'Courier New', monospace;
+  color: #003366;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.25rem 0.5rem;
+  background: #e8f4f8;
+  border-radius: 4px;
+  border: 1px solid #d0e8f0;
+  font-weight: 500;
+}
+
+// --- Fragment Modal ---
+.fragment-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.fragment-modal-content {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  position: relative;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  animation: slideUp 0.3s ease;
+}
+
+.fragment-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: $primary-blue;
+  color: white;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  &:hover {
+    background: darken($primary-blue, 10%);
+    transform: rotate(90deg);
+  }
+}
+
+.fragment-modal-title {
+  font-size: 1.5rem;
+  color: $primary-blue;
+  margin: 0;
+  font-weight: 600;
+}
+
+.fragment-modal-svg {
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9f9f9;
+  border-radius: 12px;
+  padding: 2rem;
+  width: 100%;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 2px solid #e0e0e0;
+  ::ng-deep svg {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+.fragment-modal-smiles {
+  background: #e8f4f8;
+  padding: 1rem;
+  border-radius: 8px;
+  width: 100%;
+  text-align: center;
+  font-size: 0.95rem;
+
+  strong {
+    color: $primary-blue;
+    margin-right: 0.5rem;
+  }
+
+  code {
+    font-family: 'Courier New', monospace;
+    color: #333;
+    font-size: 1rem;
+    word-break: break-all;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 @include mobile {
   .home-container {
     padding: 1rem;
@@ -630,5 +823,39 @@
   }
   .modal-content {
     padding: 1.2rem 0.5rem;
+  }
+  .fragment-modal-content {
+    padding: 1.5rem 1rem;
+    max-width: 95vw;
+  }
+  .fragment-modal-svg {
+    min-height: 200px;
+    padding: 1rem;
+  }
+  .fragment-preview {
+    min-width: 120px;
+    max-width: 140px;
+  }
+  .fragment-svg {
+    min-height: 80px;
+    max-height: 100px;
+    padding: 0.3rem;
+  }
+  .fragment-smiles {
+    font-size: 0.6rem;
+    max-width: 100%;
+    padding: 0.2rem 0.3rem;
+  }
+  .fragment-cell {
+    padding: 0.5rem !important;
+    &:hover {
+      transform: scale(1.01);
+    }
+  }
+  .bde-table {
+    font-size: 0.85rem;
+    th, td {
+      padding: 0.5rem 0.3rem;
+    }
   }
 }
