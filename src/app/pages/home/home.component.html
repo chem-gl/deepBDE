@@ -219,28 +219,37 @@
               <input type="checkbox" [(ngModel)]="hideNaBonds" />
               <span>Hide N/A values</span>
             </label>
+            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+              <input type="checkbox" [(ngModel)]="showFragments" />
+              <span>Show fragments (SMILES)</span>
+            </label>
           </div>
           <table class="bde-table">
             <thead>
               <tr>
                 <th (click)="changeSort('idx')" style="cursor:pointer;">Bond Index {{ sortIndicator('idx') }}</th>
                 <th (click)="changeSort('bond_atoms')" style="cursor:pointer;">Bond Atoms {{ sortIndicator('bond_atoms') }}</th>
-                <th>Begin Atom</th>
-                <th>End Atom</th>
-                <th (click)="changeSort('bde')" style="cursor:pointer;">BDE (kcal/mol) {{ sortIndicator('bde') }}</th>
+                <th (click)="changeSort('bde')" style="cursor:pointer;">DeepBDE (kcal/mol) {{ sortIndicator('bde') }}</th>
+                <th>Fitting Data (kcal/mol)</th>
                 <th>Bond Type</th>
-                <th>Source</th>
+                @if(showFragments) {
+                <th>Fragment 1 (SMILES)</th>
+                <th>Fragment 2 (SMILES)</th>
+                }
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let bond of getFilteredBonds(result)">
                 <td>{{ bond.idx }}</td>
                 <td>{{ bond.bond_atoms }}</td>
-                <td>{{ bond.begin_atom_idx }}</td>
-                <td>{{ bond.end_atom_idx }}</td>
                 <td>{{ bond.bde !== null ? bond.bde.toFixed(2) : 'N/A' }}</td>
+                <td>{{ bond.fittingDataValue !== null && bond.fittingDataValue !== undefined ? bond.fittingDataValue.toFixed(2) : '-' }}
+                </td>
                 <td>{{ bond.bond_type || 'Unknown' }}</td>
-                <td>{{ bond.source || 'DeepBDE' }}</td>
+                @if(showFragments) {
+                <td style="font-size:0.85rem; font-family:monospace; word-break:break-all;">{{ bond.frag1 || '-' }}</td>
+                <td style="font-size:0.85rem; font-family:monospace; word-break:break-all;">{{ bond.frag2 || '-' }}</td>
+                }
               </tr>
             </tbody>
           </table>
@@ -372,7 +381,7 @@
 <!-- Nuevos features seran checkbox que habilitaran si se deben quitar valores repetidos si acaso estan pegados estos al mismo atomo
  y otro checkbox para  ocultar los  N/A -->
 <div class="bde-results-section">
-  <h2>Bond Dissociation Energy Results</h2>
+  <h2>Bond Dissociation Enthalpies Results</h2>
   <div style="display:flex; gap:1.5rem; margin:0.5rem 0 1rem 0; flex-wrap:wrap;">
     <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
       <input type="checkbox" [(ngModel)]="removeDuplicatedAdjacent" />
@@ -381,6 +390,10 @@
     <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
       <input type="checkbox" [(ngModel)]="hideNaBonds" />
       <span>Hide N/A values</span>
+    </label>
+    <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+      <input type="checkbox" [(ngModel)]="showFragments" />
+      <span>Show fragments (SMILES)</span>
     </label>
   </div>
   <!-- BDE Table -->
@@ -395,21 +408,23 @@
           <th (click)="changeSort('bond_atoms')"
             style="cursor:pointer; background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
             Bond Atoms {{ sortIndicator('bond_atoms') }}</th>
-          <th
-            style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
-            Begin Atom</th>
-          <th
-            style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
-            End Atom</th>
           <th (click)="changeSort('bde')"
             style="cursor:pointer; background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
-            BDE (kcal/mol) {{ sortIndicator('bde') }}</th>
+            DeepBDE (kcal/mol) {{ sortIndicator('bde') }}</th>
+          <th
+            style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
+            Fitting Data (kcal/mol)</th>
           <th
             style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
             Bond Type</th>
+            @if(showFragments) {
           <th
             style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
-            Source</th>
+            Fragment 1 (SMILES)</th>
+          <th
+            style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
+            Fragment 2 (SMILES)</th>
+            }
         </tr>
       </thead>
       <tbody>
@@ -417,15 +432,24 @@
         <tr class="bde-row" style="transition:background 0.2s;">
           <td>{{ bond.idx }}</td>
           <td class="bond-atoms">{{ bond.bond_atoms }}</td>
-          <td>{{ bond.begin_atom_idx }}</td>
-          <td>{{ bond.end_atom_idx }}</td>
           <td class="bde-value"
             style="background:#e3f2fd; color:#003876; font-weight:700; border-radius:6px; box-shadow:0 2px 8px rgba(78,125,194,0.08);">
             {{ bond.bde !== null ? (bond.bde | number:'1.2-2') : 'N/A' }}
           </td>
+          <td class="fitting-data-value"
+            style="background:#f0f4c3; color:#33691e; font-weight:700; border-radius:6px; box-shadow:0 2px 8px rgba(102,153,0,0.08);">
+            {{ bond.fittingDataValue !== null && bond.fittingDataValue !== undefined ? (bond.fittingDataValue | number:'1.2-2') :
+            '-' }}
+          </td>
           <td class="bond-type">{{ bond.bond_type || 'Unknown' }}</td>
-          <td class="source" [style.color]="bond.source === 'CSB-QB3' ? '#00796b' : '#455a64'"
-            [style.font-weight]="bond.source === 'CSB-QB3' ? '600' : '400'">{{ bond.source || 'DeepBDE' }}</td>
+          @if(showFragments) {
+          <td class="fragment" style="font-size:0.85rem; font-family:monospace; word-break:break-all;">
+            {{ bond.frag1 || '-' }}
+          </td>
+          <td class="fragment" style="font-size:0.85rem; font-family:monospace; word-break:break-all;">
+            {{ bond.frag2 || '-' }}
+          </td>
+          }
         </tr>
         }
       </tbody>
@@ -436,7 +460,11 @@
   <!-- SVG molecular structure from BDE results -->
   @if(bdeResults.image_svg) {
   <div class="results-section">
-    <h2 class="molecular-title">Molecular Structure (BDE Result)</h2>
+    <h2 class="molecular-title">Molecular Structure (DeepBDE Predictions Only)</h2>
+    <p style="font-size: 0.9rem; color: #666; margin: 0.5rem 0 1rem 0;">
+      This image shows the molecular structure with bond annotations for DeepBDE predictions only. For fitted data values,
+      please refer to the table above.
+    </p>
     <div class="image-actions">
       <button (click)="downloadSVGFile(true)" class="btn-download">
         🖼️ Download SVG
@@ -522,7 +550,7 @@
 }
 <footer class="footer-section">
   <p>
-    &copy; 2023 DeepBDE. All rights reserved.
+    &copy; {{ currentYear }} DeepBDE. All rights reserved.
   </p>
 </footer>
 </div>
