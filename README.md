@@ -1,73 +1,77 @@
 # deepBDE
 
-Monorepo de la app DeepBDE (prediccion de Bond Dissociation Energy).
+Predicción de Bond Dissociation Energy. Monorepo: Django + Angular 20 + cliente TS generado.
 
-## Layout
+## Producción
+
+| | |
+|---|---|
+| URL | https://deepbde.ginodilabio.com/ (+ www) |
+| Servidor | `plata`, nginx host con TLS Let's Encrypt (expira 2026-12-24, auto-renew) |
+| Stack | `deepbde-web` 127.0.0.1:8082 (nginx SPA + proxy `/api/`) · `deepbde-backend` 127.0.0.1:8002 (Django + torch, healthy) · `deepbde-redis` (interno) |
+| Legacy | `test1`/`test2`.guzman-lopez.com apuntan al mismo stack. Su DNS externo no resuelve a plata (incidencia en `README-plata.md` del servidor). |
+
+## Arquitectura
 
 ```
-apps/api/          Django + drf-spectacular (submodulo ML en apps/api/deepbde)
-apps/web/          Angular 20 (nginx + proxy /api en produccion)
-packages/client/   Cliente TS generado (openapi-generator); fuera de los scans de Sonar
-contracts/         openapi.yaml (espejo; source of truth: apps/api)
-scripts/           sonar_scan.sh (api|web|all)
-compose.yml        Unico compose del repo: backend :8000, redis, web :8080
+internet → nginx host (:443 deepbde.ginodilabio.com)
+             → deepbde-web :8082 (SPA + /api/ proxy)
+             → deepbde-backend :8002 → deepbde-redis
 ```
 
-## Docker
+| Carpeta | Contenido |
+|---|---|
+| `apps/api/` | Django DRF + drf-spectacular; ML en submódulo `apps/api/deepbde` |
+| `apps/web/` | Angular 20 (prod: same-origin vía nginx) |
+| `packages/client/` | Cliente TS generado con OpenAPI (`deepbde-client`); fuera de scans Sonar |
+| `contracts/openapi.yaml` | Espejo; source of truth: `apps/api` |
+| `scripts/` | `deploy_plata.sh`, `sonar_scan.sh` |
+| `deploy/nginx/` | Plantilla vhost |
+
+## Quickstart local
 
 ```bash
-cp .env.example .env          # ajusta SECRET_KEY etc.
-docker compose up --build     # web en http://localhost:8080, api en :8000
+cp .env.example .env
+docker compose up --build   # web :8080, api :8000, redis :6379
 ```
-
-`apps/api/compose.yml` esta deprecated; usa el compose raiz.
-
-## Despliegue (plata)
-Primer setup manual en el servidor:
-
-1. Clona el repositorio en `/root/deepBDE` y prepara `.env` (el script también
-   puede crear una configuración inicial segura si falta; si ya existe, no la toca).
-2. Instala el vhost `deploy/nginx/deepbde.ginodilabio.com.conf`, comprueba Nginx
-   y ejecuta Certbot (`certbot --nginx`) para rellenar el certificado TLS.
-3. El backend queda en `127.0.0.1:8002` y la web en `127.0.0.1:8082`.
-
-Después del setup, cada push a `main` ejecuta GitHub Actions, que conecta por
-SSH a `plata` y ejecuta `scripts/deploy_plata.sh`. El script sincroniza el
-checkout, reutiliza los contenedores con Compose (recrea solo lo cambiado),
-ejecuta los healthchecks y hace rollback automático a la versión previa si
-fallan. Cada despliegue también limpia imágenes y limita el cache de build.
-Los smoke tests externos deben pasar. Configura los secretos `DEPLOY_HOST`,
-`DEPLOY_USER`, `DEPLOY_PORT` y `DEPLOY_SSH_KEY` en GitHub.
-
-El contexto de build usa `.dockerignore` raiz (excluye `.env`, `.git`, `node_modules`,
-`dist`, `.venv`, `apps/api/deepbde`, `.scannerwork`, etc.).
-
-## Dev web
 
 ```bash
-cd apps/web && npm install
-npx ng serve                  # usa environment.ts -> apiBasePath http://localhost:8000
+cd apps/web && npm install && npx ng serve   # apiBasePath http://localhost:8000 (src/environments/*)
+scripts/sonar_scan.sh api|web|all            # SONAR_TOKEN del entorno o ~/.config/opencode/.env
 ```
 
-El basePath de la API viene de `src/environments/*` (prod: same-origin via nginx).
+Producción usa `compose.prod.yml` (puertos `127.0.0.1:8002/8082`, redis interno).
+Build con `.dockerignore` raíz (excluye `.env`, `.git`, `node_modules`, `dist`, `.venv`, `apps/api/deepbde`, `.scannerwork`).
 
-## Sonar
+## CI/CD
 
-```bash
-scripts/sonar_scan.sh api|web|all   # SONAR_TOKEN del entorno o ~/.config/opencode/.env
-```
+Push a `main` dispara dos workflows:
 
-Keys: `deepbde-api`, `deepbde-web` (localhost:9000). packages/client no se escanea.
+| Workflow | Qué hace |
+|---|---|
+| `CI` | Web typecheck; API `ruff` + `mypy` no-bloqueante |
+| `Deploy production` | SSH a plata → `scripts/deploy_plata.sh`: sync git, guard disco <8 GB, `compose build + up -d --remove-orphans` reutilizando contenedores, healthchecks 180 s, rollback automático al SHA previo si fallan, prune imágenes + builder cache ≤5 GB; smokes externos bloqueantes |
+
+Secretos: `DEPLOY_HOST/USER/PORT/SSH_KEY` (llave ed25519 dedicada `~/.ssh/deepbde_deploy_plata`).
+Primer run verde: `36124480328` (14 s con cache).
+
+## E2E en prod (2026-09-25): PASS
+
+Playwright contra producción: carga, redirects, SPA `/about` `/citation` wildcard, health 200, 0 requests fallidos, móvil 390x844 OK. Flujo SMILES `CCO` → predict/info → visor SVG → BDEEvaluate → tabla BDE real (O-H 106.01, O-C 95.47, C-C 87.65). Batch con ZIP/CSV y SMILES inválido manejado.
+
+## Quality
+
+SonarQube `localhost:9000`, proyectos `deepbde-api` / `deepbde-web`. Scan solo local (`scripts/sonar_scan.sh`); no corre en GHA por diseño.
 
 ## Editor
 
-Abrir `deepBDE.code-workspace` (root + api + web, tsdk y interprete ya apuntados).
-Proyectos Serena: raiz (`deepbde`), `apps/api` y `apps/web`.
+Abrir `deepBDE.code-workspace` (root + api + web, tsdk e intérprete apuntados). Proyectos Serena: raíz (`deepbde`), `apps/api`, `apps/web`.
 
 ## Pendientes conocidos
 
-- `apps/web` no versiona `package-lock.json` (gitignored): CI y Docker usan `npm install`,
-  no `npm ci`. Pendiente decidir si se versiona el lockfile.
-- `SECRET_KEY`: la del `.env`/`.env.example` es preexistente; pendiente rotarla (TODO).
-- Mypy del CI es no bloqueante (`continue-on-error`) por deuda de anotaciones con `strict=True`.
-- Imports sin usar en `apps/api/api/controllers/` (deuda mayor, fuera del fix actual).
+- Ruff en rojo: F401/E402/F841 en `apps/api/api/controllers` (CI lint bloqueado hasta limpiar). Mypy strict sin anotaciones (no-bloqueante).
+- `console.log` de debug en bundle prod web (`[BDE FLOW]`/`[CANON]`/`[DEBUG]`); filtra por environment.
+- Eager-load ~15 MB (Ketcher 7.9 MB + RDKit wasm 6.9 MB); candidato a lazy-load.
+- `package-lock.json` gitignored: `npm install` no determinista.
+- UX silenciosa con `bond_idx` fuera de rango.
+- Rotación `SECRET_KEY` histórica pendiente.
