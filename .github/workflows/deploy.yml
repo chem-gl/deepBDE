@@ -36,3 +36,6 @@ jobs:
 
       - name: Smoke test production web
         run: curl -fsS -o /dev/null -w '%{http_code}' https://deepbde.ginodilabio.com/ | grep -q 200
+
+      - name: Smoke test production RDKit assets
+        run: curl -fsS -o /dev/null --max-time 30 https://deepbde.ginodilabio.com/assets/rdkit/RDKit_minimal.wasm

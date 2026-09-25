@@ -2,6 +2,11 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+
+# inference_util imports the local deepbde package as a top-level module in dev.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'deepbde'))
+
+
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'predictor.settings')

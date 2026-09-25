@@ -30,7 +30,7 @@
     "@tsparticles/angular": "^3.0.0",
     "@tsparticles/engine": "^3.9.1",
     "@tsparticles/slim": "^3.9.1",
-    "deepbde-client": "file:../../packages/client",
+    "deepbde-client": "*",
     "file-saver": "^2.0.5",
     "jszip": "^3.10.1",
     "rdkit": "^0.5.1",

@@ -12,6 +12,8 @@ import {
   FragmentResponseData,
   MoleculeInfoRequest,
   MoleculeInfoResponseData,
+  APIResponseFragmentResponseData,
+  APIResponseMoleculeInfoResponseData,
   V1Service,
 } from 'deepbde-client';
 import { PredictedBond } from 'deepbde-client/model/predictedBond';
@@ -1620,7 +1622,7 @@ export class HomeComponent {
     );
     console.log('[BDE FLOW] Request params:', request);
     this.v1Service.v1BDEEvaluateCreate(request).subscribe({
-      next: async (response) => {
+      next: async (response: APIResponseFragmentResponseData) => {
         console.log('[BDE FLOW] ===== API Response received =====');
         console.log('[BDE FLOW] Response object:', response);
         if (!response) {
@@ -1684,9 +1686,10 @@ export class HomeComponent {
           this.generateFragmentSvgsForBonds();
 
           this.error = null;
-          if (this.bdeResults.image_svg) {
+          const imageSvg = this.bdeResults?.image_svg;
+          if (imageSvg) {
             this.bdeResultsSanitizedSvg = sanitizeSvg(
-              this.bdeResults.image_svg,
+              imageSvg,
               this.sanitizer,
             );
           } else {
@@ -1759,7 +1762,7 @@ export class HomeComponent {
       smiles: this.smilesInput.trim(),
     };
     this.v1Service.v1PredictInfoCreate(requestInfo).subscribe({
-      next: (response) => {
+      next: (response: APIResponseMoleculeInfoResponseData) => {
         if (!response) {
           this.error = 'No data received from the server';
           this.loadingInfo = false;

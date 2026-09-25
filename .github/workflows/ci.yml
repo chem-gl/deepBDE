@@ -10,19 +10,17 @@ jobs:
   web:
     name: Web (typecheck)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # apps/web no versiona package-lock.json (gitignored) -> npm install, no npm ci.
       - name: Instalar dependencias
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Typecheck (tsc --noEmit)
-        run: npx tsc --noEmit -p tsconfig.app.json
+        run: npx tsc --noEmit -p apps/web/tsconfig.app.json
+      - name: Build Angular
+        run: npm run build -w apps/web
 
   api-lint:
     name: API (ruff + mypy, sin torch)

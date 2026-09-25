@@ -28,7 +28,7 @@
               },
               {
                 "glob": "**/*",
-                "input": "node_modules/@rdkit/rdkit/dist",
+                "input": "../../node_modules/@rdkit/rdkit/dist",
                 "output": "/assets/rdkit"
               }
             ],
@@ -92,7 +92,7 @@
               },
               {
                 "glob": "**/*",
-                "input": "node_modules/@rdkit/rdkit/dist",
+                "input": "../../node_modules/@rdkit/rdkit/dist",
                 "output": "/assets/rdkit"
               }
             ],

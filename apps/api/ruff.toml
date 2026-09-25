@@ -11,8 +11,6 @@ exclude = [
 
 [lint]
 # Reglas por defecto (E,F). Relax para codigo Django generado si hace falta.
-# NOTA: api/controllers/* y api/model/dto.py tienen deuda F401 preexistente
-# en edicion por otro agente; resolverla antes de esperar CI verde.
 # E501: el baseline no cumple line-length 100; aplicar progresivamente.
 select = ["E", "F"]
 ignore = ["E501"]

@@ -9,7 +9,7 @@ from api.controllers.predict_controller import (
     download_report_controller
 )
 from .model.dto import (
-    Atom2D, Bond2D, Fragments,  MoleculeInfoRequest, MoleculeSmileCanonicalRequest, MoleculeSmileCanonicalResponseData, PredictSingleRequest, PredictMultipleRequest,
+    Atom2D, Bond2D, MoleculeInfoRequest, MoleculeSmileCanonicalRequest, MoleculeSmileCanonicalResponseData, PredictSingleRequest, PredictMultipleRequest,
     BDEEvaluateRequest, InferAllRequest, DownloadReportRequest, PredictCheckRequest,
     MoleculeInfoResponseData, PredictSingleResponseData, PredictMultipleResponseData,
     FragmentResponseData, InferAllResponseData, DownloadReportResponseData, PredictCheckResponseData,

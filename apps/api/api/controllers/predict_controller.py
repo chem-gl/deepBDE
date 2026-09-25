@@ -6,19 +6,18 @@ import io
 import logging
 import re  # NEW: SVG sanitization
 import xml.etree.ElementTree as ET
-from typing import Any, Dict, Tuple, cast
+from typing import Dict, Tuple
 
 import torch
-from architecture import model
 from attr import dataclass
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem.Draw import rdMolDraw2D
+from deepbde.architecture.inference_util import single_predict
 
 # NUEVO: para anotar posiciones en el lienzo
-from rdkit.Geometry import rdGeometry
 
-from api.controllers.cache_controller import cache_get, cache_set, init_cache_db
+from api.controllers.cache_controller import cache_get, cache_set
 from api.model.dto import (
     Atom2D,
     BDEEvaluateRequest,
@@ -32,8 +31,6 @@ from api.model.dto import (
     MoleculeInfoResponseData,
     MoleculeSmileCanonicalRequest,
     MoleculeSmileCanonicalResponseData,
-    ObtainBDEFragmentsRequest,
-    ObtainBDEFragmentsResponseData,
     PredictCheckRequest,
     PredictCheckResponseData,
     PredictedBond,
@@ -45,7 +42,6 @@ from api.model.dto import (
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-from deepbde.architecture.inference_util import single_predict
 
 
 @dataclass
@@ -591,10 +587,6 @@ def get_fragments_from_bond(mol: Chem.Mol, bond_idx: int) -> list[str]:
         bond = mol_copy.GetBondWithIdx(bond_idx)
         begin_idx = bond.GetBeginAtomIdx()
         end_idx = bond.GetEndAtomIdx()
-        
-        # Verificar si uno de los átomos es hidrógeno
-        atom1 = mol_copy.GetAtomWithIdx(begin_idx)
-        atom2 = mol_copy.GetAtomWithIdx(end_idx)
         
         mol_copy.RemoveBond(begin_idx, end_idx)
         fragments = Chem.GetMolFrags(mol_copy, asMols=True)

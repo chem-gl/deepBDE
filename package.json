@@ -1,0 +1,5 @@
+{
+  "name": "deepbde-monorepo",
+  "private": true,
+  "workspaces": ["apps/web", "packages/client"]
+}
