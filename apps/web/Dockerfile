@@ -5,10 +5,14 @@ FROM node:22-alpine AS build
 WORKDIR /repo
 
 # 1) Cliente compartido + manifiestos: capa de cache de dependencias.
-COPY packages/client ./packages/client
+# El cliente vive dentro de apps/web en la imagen para que sus peer dependencies
+# resuelvan los paquetes Angular instalados en apps/web/node_modules.
+COPY packages/client ./apps/web/vendor/client
 COPY apps/web/package.json apps/web/angular.json apps/web/tsconfig*.json ./apps/web/
 # Nota: apps/web no versiona package-lock.json (gitignored) -> npm install en vez de npm ci.
-RUN cd apps/web && npm install --no-audit --no-fund
+RUN sed -i 's#file:../../packages/client#file:./vendor/client#' apps/web/package.json \
+    && sed -i 's#../../packages/client#./vendor/client#g' apps/web/tsconfig.json \
+    && cd apps/web && npm install --no-audit --no-fund
 
 # 2) Fuente de la app y build de produccion.
 # Se copian solo src/ y public/ (los manifiestos ya vienen de la etapa 1):

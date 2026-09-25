@@ -15,8 +15,8 @@
     "target": "ES2022",
     "module": "preserve",
     "paths": {
-      "deepbde-client": ["../packages/client/index.ts"],
-      "deepbde-client/*": ["../packages/client/*"]
+      "deepbde-client": ["../../packages/client/index.ts"],
+      "deepbde-client/*": ["../../packages/client/*"]
     }
   },
   "angularCompilerOptions": {
