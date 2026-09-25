@@ -23,13 +23,21 @@ docker compose up --build     # web en http://localhost:8080, api en :8000
 `apps/api/compose.yml` esta deprecated; usa el compose raiz.
 
 ## Despliegue (plata)
-```bash
-git clone https://github.com/chem-gl/deepBDE.git && cd deepBDE
-cp .env.example .env  # ajusta SECRET_KEY y variables de producción
-docker compose -f compose.yml -f compose.prod.yml up -d --build
-```
-Nginx del host debe proxear el dominio a `127.0.0.1:8082`.
-Configura el certificado TLS con Certbot en el host.
+Primer setup manual en el servidor:
+
+1. Clona el repositorio en `/root/deepBDE` y prepara `.env` (el script también
+   puede crear una configuración inicial segura si falta; si ya existe, no la toca).
+2. Instala el vhost `deploy/nginx/deepbde.ginodilabio.com.conf`, comprueba Nginx
+   y ejecuta Certbot (`certbot --nginx`) para rellenar el certificado TLS.
+3. El backend queda en `127.0.0.1:8002` y la web en `127.0.0.1:8082`.
+
+Después del setup, cada push a `main` ejecuta GitHub Actions, que conecta por
+SSH a `plata` y ejecuta `scripts/deploy_plata.sh`. El script sincroniza el
+checkout, reutiliza los contenedores con Compose (recrea solo lo cambiado),
+ejecuta los healthchecks y hace rollback automático a la versión previa si
+fallan. Cada despliegue también limpia imágenes y limita el cache de build.
+Los smoke tests externos deben pasar. Configura los secretos `DEPLOY_HOST`,
+`DEPLOY_USER`, `DEPLOY_PORT` y `DEPLOY_SSH_KEY` en GitHub.
 
 El contexto de build usa `.dockerignore` raiz (excluye `.env`, `.git`, `node_modules`,
 `dist`, `.venv`, `apps/api/deepbde`, `.scannerwork`, etc.).

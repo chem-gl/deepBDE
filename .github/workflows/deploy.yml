@@ -1,0 +1,33 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy on plata
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          command_timeout: 45m
+          script: |
+            set -e
+            if [ ! -d /root/deepBDE ]; then git clone https://github.com/chem-gl/deepBDE /root/deepBDE; fi
+            bash /root/deepBDE/scripts/deploy_plata.sh
+
+      - name: Smoke test production endpoint
+        run: curl -fsS --max-time 30 https://deepbde.ginodilabio.com/api/v1/health/
+
+      - name: Smoke test production web
+        run: curl -fsS -o /dev/null -w '%{http_code}' https://deepbde.ginodilabio.com/ | grep -q 200
