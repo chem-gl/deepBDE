@@ -1,0 +1,12 @@
+{
+  "cSpell.words": [
+    "deepbde",
+    "fragmentable",
+    "healthcheck",
+    "latexmk",
+    "redis"
+  ],
+
+  "python.analysis.typeCheckingMode": "standard",
+  "gitConfigUser.selectedProfile": "Cesar"
+}
