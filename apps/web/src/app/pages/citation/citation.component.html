@@ -1,0 +1,170 @@
+<div class="citation-container">
+  <header class="citation-hero">
+    <h1>📄 How to Cite DeepBDE</h1>
+    <p class="subtitle">
+      If you use DeepBDE in your research, please cite our work.
+      <br />
+      Paper in preparation: DeepBDE, a graph neural network for fast and accurate bond dissociation enthalpies
+    </p>
+  </header>
+
+  <section class="citation-formats">
+    <div class="format-card">
+      <h3>🎓 Academic Citation</h3>
+      <div class="citation-box">
+        <pre>{{ academicCitation }}</pre>
+        <button class="copy-btn" (click)="copyToClipboard(academicCitation)">
+          📋 Copy Citation
+        </button>
+      </div>
+    </div>
+
+    <div class="format-card">
+      <h3>🔗 BibTeX Format</h3>
+      <div class="citation-box">
+        <pre>{{ bibtexCitation }}</pre>
+        <button class="copy-btn" (click)="copyToClipboard(bibtexCitation)">
+          📋 Copy BibTeX
+        </button>
+      </div>
+    </div>
+  </section>
+  <section class="usage-guidelines">
+    <h2>📋 Usage Guidelines</h2>
+    <div class="guidelines-content">
+      <div class="guideline-item">
+        <h4>🎯 When to Cite</h4>
+        <ul>
+          <li>When using DeepBDE predictions in your research</li>
+          <li>When comparing with other BDE prediction methods</li>
+          <li>When building upon our methodology</li>
+          <li>When using our molecular editor or API</li>
+        </ul>
+      </div>
+
+      <div class="guideline-item">
+        <h4>📝 Citation Best Practices</h4>
+        <ul>
+          <li>Include the full citation in your references</li>
+          <li>Mention DeepBDE in your methodology section</li>
+          <li>Specify which version you used</li>
+          <li>Include relevant parameters or settings</li>
+        </ul>
+      </div>
+
+      <div class="guideline-item">
+        <h4>🔗 Linking Guidelines</h4>
+        <ul>
+          <li>Link to our GitHub repository for code access</li>
+          <li>Reference the web application for interactive use</li>
+          <li>Include DOI when available</li>
+          <li>Mention funding sources when applicable</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <section class="demo-section">
+    <h2>🚀 Demo & Examples</h2>
+    <div class="demo-grid">
+      <div class="demo-card">
+        <h4>Basic SMILES Analysis</h4>
+        <p>Try analyzing this ethanol molecule:</p>
+        <code class="demo-smiles">CCO</code>
+        <p class="demo-description">
+          Simple alcohol molecule - great for testing basic functionality
+        </p>
+      </div>
+
+      <div class="demo-card">
+        <h4>Complex Organic Molecule</h4>
+        <p>Analyze this aspirin molecule:</p>
+        <code class="demo-smiles">CC(=O)OC1=CC=CC=C1C(=O)O</code>
+        <p class="demo-description">
+          Common pharmaceutical compound with multiple functional groups
+        </p>
+      </div>
+
+      <div class="demo-card">
+        <h4>Aromatic Compound</h4>
+        <p>Test with this benzene derivative:</p>
+        <code class="demo-smiles">CC1=CC=CC=C1</code>
+        <p class="demo-description">
+          Toluene - demonstrates aromatic bond analysis capabilities
+        </p>
+      </div>
+
+      <div class="demo-card">
+        <h4>Molecular Editor</h4>
+        <p>Use our integrated drawing tool</p>
+        <div class="editor-preview">
+          <span class="editor-icon">🖊️</span>
+          <p>Draw custom molecules</p>
+        </div>
+        <p class="demo-description">
+          Interactive molecular structure editor for custom analysis
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="resources-section">
+    <h2>📚 Additional Resources</h2>
+    <div class="resources-grid">
+      <div class="resource-card">
+        <h4>📖 Documentation</h4>
+        <p>
+          Comprehensive guides and API documentation for integrating DeepBDE
+          into your research workflow
+        </p>
+        <a href="#" class="resource-link">View Documentation</a>
+      </div>
+
+      <div class="resource-card">
+        <h4>💻 GitHub Repository</h4>
+        <p>
+          Access the source code, report issues, and contribute to the
+          development of DeepBDE
+        </p>
+        <a href="https://github.com/SoyYo/deepbde" target="_blank" class="resource-link">
+          Visit GitHub
+        </a>
+      </div>
+
+      <div class="resource-card">
+        <h4>📊 Research Paper</h4>
+        <p>
+          Read the original research paper describing the methodology and
+          validation of DeepBDE
+        </p>
+        <a href="#" class="resource-link">Read Paper</a>
+      </div>
+
+      <div class="resource-card">
+        <h4>🤝 Support</h4>
+        <p>
+          Get help with implementation, report bugs, or request new features
+          for DeepBDE
+        </p>
+        <a href="#" class="resource-link">Get Support</a>
+      </div>
+    </div>
+  </section>
+
+
+
+  <section class="feedback-section">
+    <h2>💬 Feedback & Collaboration</h2>
+    <div class="feedback-content">
+      <p>
+        We value your feedback and welcome collaboration opportunities. If
+        you've used DeepBDE in your research, we'd love to hear about your
+        experience and any suggestions for improvement.
+      </p>
+      <div class="feedback-actions">
+        <button class="feedback-btn primary">Share Your Research</button>
+        <button class="feedback-btn secondary">Report Issues</button>
+        <button class="feedback-btn secondary">Suggest Features</button>
+      </div>
+    </div>
+  </section>
+</div>

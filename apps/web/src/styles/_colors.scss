@@ -1,0 +1,54 @@
+// DeepBDE Color Palette
+// Principales
+$primary-blue: #4e7dc2;
+$primary-dark: #003876;
+$brand-dark: #002145;
+
+// Claros grises
+$light-gray-1: #efeeed;
+$light-gray-2: #d3d1cb;
+$light-gray-3: #b7b5b1;
+$light-gray-4: #97948d;
+
+// Bordes y otros
+$border-blue: #9cacc3;
+$text-gray: #6c7b8e;
+
+// Additional colors for accents
+$success: #6baae3;
+$info: #267bc8;
+$warning: #1d5d97;
+$muted: #133d65;
+
+// Background gradients
+$hero-gradient: linear-gradient(
+  135deg,
+  rgba(78, 125, 194, 0.8) 0%,
+  rgba(0, 56, 118, 0.9) 100%
+);
+$card-gradient: linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%);
+$button-gradient: linear-gradient(135deg, #4e7dc2 0%, #003876 100%);
+$navbar-gradient: linear-gradient(
+  135deg,
+  #4e7dc2 0%,
+  #002145 50%,
+  #003876 100%
+);
+
+// Shadow colors
+$shadow-light: rgba(0, 33, 69, 0.1);
+$shadow-medium: rgba(0, 33, 69, 0.2);
+$shadow-dark: rgba(0, 33, 69, 0.3);
+
+$highlight-yellow: #fff9c4; // Amarillo suave para resaltar filas BDE
+
+// Text colors
+$text-primary: #002145;
+$text-secondary: #6c7b8e;
+$text-muted: #97948d;
+$text-white: #ffffff;
+
+// Border colors
+$border-light: #d3d1cb;
+$border-medium: #9cacc3;
+$border-active: #4e7dc2;

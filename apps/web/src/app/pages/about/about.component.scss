@@ -1,0 +1,313 @@
+@use "../../../styles/mixins" as *;
+.about-container {
+  @include container-base;
+  max-width: 1200px;
+  line-height: 1.8;
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  @include mobile-container;
+}
+.about-hero {
+  @include hero-section;
+  padding: 4rem 2rem;
+  color: white;
+  text-align: center;
+  h1 {
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+  }
+  .description {
+    font-size: 1.2rem;
+    max-width: 800px;
+    margin: 0 auto 2rem;
+    opacity: 0.95;
+  }
+}
+.features-section {
+  margin-bottom: 3rem;
+  h3 {
+    @include section-title;
+    font-size: 2rem;
+    color: #333;
+  }
+  .features-grid {
+    @include grid-responsive(280px);
+    margin-top: 2rem;
+    gap: 2rem;
+    @include mobile-grid;
+  }
+  .feature-card {
+    @include card-base;
+    padding: 1.5rem;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    &:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    }
+    h4 {
+      font-size: 1.3rem;
+      color: #2575fc;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    p {
+      font-size: 1rem;
+      color: #555;
+    }
+  }
+}
+.molecular-editor-section {
+  background: $light-gray-1;
+  padding: 3rem;
+  border-radius: 20px;
+  margin-bottom: 3rem;
+  border: 2px solid $border-medium;
+  h3 {
+    @include section-title;
+    margin-bottom: 2.5rem;
+  }
+  .editor-info {
+    @include grid-responsive(300px);
+    gap: 3rem;
+    align-items: start;
+    @include mobile {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+    .editor-description,
+    .editor-features {
+      h4 {
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+        color: $primary-blue;
+      }
+      p {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+        color: $text-secondary;
+      }
+    }
+    .features-list {
+      list-style: none;
+      padding: 0;
+      li {
+        padding: 0.5rem 0;
+        font-size: 1rem;
+        color: $text-secondary;
+        border-bottom: 1px solid $border-light;
+        &:last-child {
+          border-bottom: none;
+        }
+      }
+    }
+    .feature-highlight {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 1.5rem;
+      border-radius: 10px;
+      margin-bottom: 1.5rem;
+      backdrop-filter: blur(10px);
+      h5 {
+        color: #ffeaa7;
+        font-size: 1.2rem;
+        margin-bottom: 0.8rem;
+        font-weight: 600;
+      }
+      p {
+        margin: 0;
+        font-size: 1rem;
+        opacity: 0.9;
+      }
+    }
+  }
+  @include mobile {
+    padding: 2rem 1rem;
+    h3 {
+      font-size: 2rem;
+    }
+    .editor-info {
+      .editor-description h4,
+      .editor-features h4 {
+        font-size: 1.3rem;
+      }
+      .feature-highlight {
+        padding: 1rem;
+      }
+    }
+  }
+}
+.technology-section {
+  background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+  padding: 3rem;
+  border-radius: 15px;
+  text-align: center;
+  h3 {
+    @include section-title;
+    font-size: 2.2rem;
+    color: #333;
+    margin-bottom: 1.5rem;
+  }
+  p {
+    font-size: 1.1rem;
+    color: #555;
+    max-width: 800px;
+    margin: 0 auto 2rem;
+  }
+  .tech-highlights {
+    @include grid-responsive(250px);
+    margin-top: 2rem;
+    gap: 2rem;
+    @include mobile-grid;
+    .tech-item {
+      @include card-base;
+      padding: 1.5rem;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+      }
+      h4 {
+        font-size: 1.3rem;
+        color: #2575fc;
+        font-weight: 600;
+        margin-bottom: 1rem;
+      }
+      p {
+        font-size: 1rem;
+        color: #555;
+      }
+    }
+  }
+}
+.authors-section {
+  text-align: center;
+  margin: 2rem auto;
+  h3 {
+    @include section-title;
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
+    color: #333;
+  }
+  .authors-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2rem;
+  }
+  .author-card {
+    background: white;
+    border: 1px solid #ddd;
+    padding: 1.5rem;
+    width: 220px;
+    text-align: center;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    &:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    }
+    img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 5%;
+      margin-bottom: 1rem;
+    }
+    p {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #555;
+    }
+    .degree {
+      font-size: 0.9rem;
+      color: #777;
+      margin-top: -0.5rem;
+    }
+  }
+} // Mobile responsiveness
+@include mobile {
+  .about-container {
+    padding: 1rem;
+  }
+  .about-hero {
+    padding: 2rem 1rem;
+    h1 {
+      font-size: 2.5rem;
+    }
+    h2 {
+      font-size: 1.4rem;
+    }
+    .description {
+      font-size: 1rem;
+    }
+  }
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .feature-card {
+    padding: 1.5rem;
+  }
+  .molecular-editor-section {
+    padding: 2rem 1rem;
+    h3 {
+      font-size: 2rem;
+    }
+    .editor-info {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      .editor-description h4,
+      .editor-features h4 {
+        font-size: 1.3rem;
+      }
+      .feature-highlight {
+        padding: 1rem;
+      }
+    }
+  }
+  .technology-section {
+    padding: 2rem 1rem;
+    h3 {
+      font-size: 1.8rem;
+    }
+    .tech-highlights {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      .tech-item {
+        padding: 1.2rem;
+      }
+    }
+  }
+  .authors-section {
+    margin: 1.5rem auto;
+    h3 {
+      font-size: 1.8rem;
+    }
+  }
+  .authors-grid {
+    gap: 1rem;
+  }
+  .author-card {
+    width: 100%;
+    max-width: 300px;
+  }
+}

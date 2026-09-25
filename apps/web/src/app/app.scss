@@ -1,0 +1,10 @@
+.main-content {
+  min-height: calc(100vh - 60px);
+  position: relative;
+  z-index: 1;
+}
+
+app-navbar {
+  position: relative;
+  z-index: 2;
+}

@@ -1,0 +1,15 @@
+/* particles-background.component.scss */
+
+/* El :host asegura que el componente ocupe toda la pantalla y quede detrás del contenido */
+:host,
+ngx-particles {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1; /* detrás del contenido */
+  display: block;
+  pointer-events: none; /* evita que el fondo interfiera con clicks si lo deseas */
+}
+
+/* Si quieres que el fondo reciba hover/clicks para interactividad, quita pointer-events */

@@ -1,0 +1,861 @@
+@use "../../../styles/colors" as *;
+@use "../../../styles/mixins" as *;
+// --- SMILES List Section ---
+.smiles-list-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 2rem;
+}
+.smiles-list-actions {
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+.smiles-list-row {
+  display: flex;
+  align-items: center;
+  font-size: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: background 0.2s;
+  width: 100%;
+  gap: 0.5rem;
+}
+
+// --- Modal Preview ---
+.modal-preview {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.82);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.modal-content {
+  background: #fff;
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
+  position: relative;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.modal-close {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.2rem;
+  background: #fff;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-svg {
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+// --- Botón Agregar y File Input ---
+.btn-add,
+.smiles-file-input {
+  @include button-secondary;
+  margin-left: 0.5rem;
+  background: $border-blue;
+  border-radius: 0;
+  min-width: 90px;
+}
+.btn-add:disabled {
+  background: $border-blue;
+  color: $text-gray;
+  cursor: not-allowed;
+}
+// --- Loading Indicator ---
+.loading-indicator {
+  height: 100px;
+  width: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 2rem auto;
+}
+// --- SVG Content ---
+.svg-content {
+  max-width: 100%;
+  height: auto;
+  width: 600px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+// --- SMILES Table ---
+.smiles-table {
+  width: 90%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+.smiles-table th,
+.smiles-table td {
+  text-align: center;
+}
+.smiles-table th {
+  background: $primary-blue;
+  color: $text-white;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.smiles-table tr:last-child td {
+  border-bottom: none;
+}
+.smiles-table tr:nth-child(even) {
+  background: $light-gray-2;
+}
+.molecular-title {
+  text-align: center;
+}
+
+.image-actions {
+  justify-content: center;
+  display: flex;
+}
+// --- NoButton ---
+.noButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.5rem;
+  transition: background 0.15s;
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  &:hover {
+    background: $light-gray-2;
+  }
+}
+// --- Download Section ---
+.download-section {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+  border-radius: 10px;
+  gap: 1rem;
+  .noButton {
+    background-color: $primary-blue;
+    color: $text-white;
+    padding: 0.5rem 1.2rem;
+    border-radius: 15px;
+    cursor: pointer;
+    font-size: 1rem;
+    &:hover {
+      background: $button-gradient;
+    }
+  }
+}
+// --- NoButton2 ---
+.noButton2 {
+  background-color: $primary-blue;
+  color: $text-white;
+  padding: 0.5rem 1.2rem;
+  border-radius: 15px;
+  width: 300px;
+  margin: 20px auto 0 auto;
+  cursor: pointer;
+  text-align: center;
+  font-size: 1rem;
+  transition: background 0.15s;
+  &:hover {
+    background: $button-gradient;
+  }
+}
+// --- Image Container ---
+.image-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0 auto 2rem auto;
+}
+
+// --- SVG Display Fullscreen ---
+.svg-display.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: white;
+  z-index: 990;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: auto;
+}
+// --- BDE Results Section Scroll ---
+.bde-results-section-scroll {
+  margin-top: 2rem;
+  padding: 1rem;
+  border-radius: 8px;
+  max-height: 1000px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #888 #f1f1f1;
+}
+.bde-results-section-scroll::-webkit-scrollbar {
+  width: 12px;
+}
+.bde-results-section-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+.bde-results-section-scroll::-webkit-scrollbar-thumb {
+  background-color: #888;
+  width: 18px;
+}
+.bde-results-section-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #555;
+  border-radius: 10px;
+}
+
+// --- Close Fullscreen Button ---
+.close-fullscreen-btn {
+  position: absolute;
+  top: 100px;
+  right: 30px;
+  z-index: 10000;
+  font-size: 2rem;
+  background: white;
+  border-radius: 50%;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  &:hover {
+    background: $light-gray-2;
+  }
+}
+
+// --- Molecular Title ---
+.molecular-title {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: $primary-blue;
+  margin-bottom: 1rem;
+}
+
+.home-container {
+  @include container-base;
+}
+
+.footer-section {
+  text-align: center;
+  margin-top: 2rem;
+  padding: 1rem 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: $text-primary;
+}
+
+.hero-section {
+  @include hero-section;
+}
+
+.features-grid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 1rem;
+  margin-top: 1rem;
+}
+
+.feature-card {
+  @include card-base;
+  transition: all 0.3s ease;
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px $shadow-medium;
+    border-color: $border-active;
+  }
+  h3 {
+    font-size: 1.3rem;
+    color: $primary-blue;
+    margin-bottom: 1rem;
+    font-weight: 600;
+  }
+  p {
+    color: $text-secondary;
+    font-size: 1rem;
+  }
+  @include mobile-card;
+}
+
+.btn-primary {
+  @include button-primary;
+  //se Centra
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.molecule-image {
+  margin: 10px;
+}
+.btn-secondary {
+  @include button-secondary;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border-radius: 5px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-secondary:hover {
+  background-color: #e0e0e0;
+}
+
+.analysis-section {
+  margin-bottom: 2rem;
+}
+
+.mode-selector {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 2rem;
+}
+
+.mode-btn {
+  @include button-secondary;
+  border-radius: 0;
+  margin: 0;
+  border-right: 1px solid $border-blue;
+}
+
+.mode-btn:first-child {
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+
+.mode-btn:last-child {
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+  border-right: none;
+}
+
+.mode-btn.active {
+  border-color: $primary-blue;
+  background: $button-gradient;
+  color: $text-white;
+  z-index: 1;
+}
+
+.smiles-input,
+.parent-smiles-input,
+.fragment-input {
+  @include input-base;
+}
+
+.loading-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 2rem 0;
+}
+.spinner {
+  @include loading-spinner;
+}
+.loading-section p {
+  margin-top: 1rem;
+  color: $text-secondary;
+}
+
+.results-section {
+  margin-top: 2rem;
+}
+.image-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.btn-download {
+  @include button-secondary;
+}
+.image-container {
+  position: relative;
+  margin-bottom: 2rem;
+}
+.image-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.control-btn {
+  @include button-secondary;
+  padding: 0.5rem 1rem;
+}
+.svg-display {
+  border-radius: 10px;
+  background: white;
+  overflow: auto;
+  height: 500px;
+  width: 100%;
+}
+.svg-content {
+  width: 100%;
+  height: 100%;
+  // centrar
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.error-section {
+  @include error-section;
+}
+
+.bond-options-horizontal {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.custom-bonds-input {
+  flex: 1;
+  label {
+    font-weight: 600;
+    color: $text-primary;
+  }
+  input {
+    @include input-base;
+  }
+  &.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+}
+
+.title-format {
+  text-align: center;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: $primary-blue;
+}
+.format-checkboxes {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+.format-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+.format-checkboxes label {
+  background: $primary-blue;
+  padding: 0.5rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 500;
+  color: $text-white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.bde-action {
+  margin-top: 2rem;
+  text-align: center;
+}
+.btn-bde {
+  @include button-primary;
+}
+
+.bde-results-section {
+  margin-top: 2rem;
+  padding: 1rem;
+  border: 1px solid $border-active;
+  border-radius: 8px;
+}
+.bde-table-container {
+  margin-bottom: 2rem;
+}
+.bde-table {
+  @include table-base;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 700px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.bde-table th {
+  background: $primary-blue;
+  color: $text-white;
+  font-weight: 600;
+  padding: 0.8rem;
+  user-select: none;
+
+  &[style*="cursor:pointer"] {
+    transition: all 0.2s ease;
+    &:hover {
+      background: lighten($primary-blue, 5%);
+      transform: translateY(-1px);
+    }
+    &:active {
+      transform: translateY(0);
+    }
+  }
+}
+.bde-table td {
+  padding: 0.7rem;
+  text-align: center;
+}
+.bde-row {
+  transition: background 0.2s;
+}
+.bde-row.bde-highlight {
+  background: $primary-blue;
+  font-weight: 700;
+  color: $primary-blue;
+}
+.export-actions {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.export-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+.btn-export {
+  @include button-primary;
+  min-width: 140px;
+  font-size: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.draw-section {
+  margin-top: 2rem;
+}
+.draw-actions {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.smiles-display {
+  margin-top: 1rem;
+}
+.smiles-box {
+  background: $light-gray-2;
+  padding: 1rem;
+  border-radius: 8px;
+  font-family: monospace;
+  color: $text-primary;
+}
+.btn-copy {
+  //justifico a la derecha
+  margin-left: auto;
+  cursor: pointer;
+}
+.ketcher-loading-info {
+  color: $text-secondary;
+  font-style: italic;
+  margin-top: 1rem;
+}
+
+.help-text {
+  color: $text-gray;
+  text-align: right;
+  font-size: 0.85rem;
+  font-style: italic;
+  margin-top: 0.2rem;
+  margin-bottom: 0.5rem;
+  display: block;
+  width: 100%;
+  padding-right: 0.5rem;
+}
+
+// --- Fragment Styles ---
+.fragment-cell {
+  padding: 0.8rem !important;
+  background: #fafafa;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+  text-align: center;
+  &:hover {
+    background: #e8f4f8;
+    transform: scale(1.03);
+    box-shadow: 0 2px 8px rgba(0, 51, 102, 0.1);
+  }
+}
+
+.fragment-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 150px;
+  max-width: 180px;
+  margin: 0 auto;
+}
+
+.fragment-svg {
+  min-height: 100px;
+  max-height: 120px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 8px;
+  padding: 0.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  border: 1px solid #e0e0e0;
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 51, 102, 0.15);
+    border-color: $primary-blue;
+  }
+  ::ng-deep svg {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+.fragment-smiles {
+  font-size: 0.65rem;
+  font-family: 'Courier New', monospace;
+  color: #003366;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.25rem 0.5rem;
+  background: #e8f4f8;
+  border-radius: 4px;
+  border: 1px solid #d0e8f0;
+  font-weight: 500;
+}
+
+// --- Fragment Modal ---
+.fragment-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.fragment-modal-content {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  position: relative;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  animation: slideUp 0.3s ease;
+}
+
+.fragment-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: $primary-blue;
+  color: white;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  &:hover {
+    background: darken($primary-blue, 10%);
+    transform: rotate(90deg);
+  }
+}
+
+.fragment-modal-title {
+  font-size: 1.5rem;
+  color: $primary-blue;
+  margin: 0;
+  font-weight: 600;
+}
+
+.fragment-modal-svg {
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9f9f9;
+  border-radius: 12px;
+  padding: 2rem;
+  width: 100%;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 2px solid #e0e0e0;
+  ::ng-deep svg {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+.fragment-modal-smiles {
+  background: #e8f4f8;
+  padding: 1rem;
+  border-radius: 8px;
+  width: 100%;
+  text-align: center;
+  font-size: 0.95rem;
+
+  strong {
+    color: $primary-blue;
+    margin-right: 0.5rem;
+  }
+
+  code {
+    font-family: 'Courier New', monospace;
+    color: #333;
+    font-size: 1rem;
+    word-break: break-all;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@include mobile {
+  .home-container {
+    padding: 1rem;
+  }
+  .hero-section {
+    padding: 2rem 1rem;
+    h1 {
+      font-size: 2.5rem;
+    }
+  }
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .feature-card {
+    padding: 1.5rem;
+  }
+  .analysis-section {
+    margin-bottom: 1rem;
+  }
+  .draw-section {
+    margin-top: 1rem;
+  }
+  .results-section {
+    margin-top: 1rem;
+  }
+  .bde-results-section {
+    margin-top: 1rem;
+  }
+  .smiles-table {
+    width: 100%;
+    font-size: 0.95rem;
+  }
+  .modal-content {
+    padding: 1.2rem 0.5rem;
+  }
+  .fragment-modal-content {
+    padding: 1.5rem 1rem;
+    max-width: 95vw;
+  }
+  .fragment-modal-svg {
+    min-height: 200px;
+    padding: 1rem;
+  }
+  .fragment-preview {
+    min-width: 120px;
+    max-width: 140px;
+  }
+  .fragment-svg {
+    min-height: 80px;
+    max-height: 100px;
+    padding: 0.3rem;
+  }
+  .fragment-smiles {
+    font-size: 0.6rem;
+    max-width: 100%;
+    padding: 0.2rem 0.3rem;
+  }
+  .fragment-cell {
+    padding: 0.5rem !important;
+    &:hover {
+      transform: scale(1.01);
+    }
+  }
+  .bde-table {
+    font-size: 0.85rem;
+    th, td {
+      padding: 0.5rem 0.3rem;
+    }
+  }
+}

@@ -1,0 +1,314 @@
+@use "colors" as *;
+@forward "colors";
+
+// Mixins for common styling patterns
+@mixin container-base {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  min-height: 100vh;
+
+  background-color: rgba(255, 255, 255, 0.9);
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+
+@mixin hero-section {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: $hero-gradient, url("/acp4.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: 20px;
+  color: $text-white;
+  margin-bottom: 3rem;
+  box-shadow: 0 10px 40px $shadow-dark;
+  border: 2px solid $border-medium;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba($brand-dark, 0.3);
+    pointer-events: none;
+  }
+
+  h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    letter-spacing: -2px;
+    position: relative;
+    z-index: 1;
+  }
+}
+
+@mixin card-base {
+  background: white;
+  padding: 2rem;
+  border-radius: 15px;
+  box-shadow: 0 8px 25px $shadow-light;
+  border: 2px solid $border-light;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px $shadow-medium;
+    border-color: $border-active;
+  }
+}
+
+@mixin button-primary {
+  background: $button-gradient;
+  color: $text-white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 50px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba($primary-blue, 0.4);
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba($primary-blue, 0.6);
+    background: linear-gradient(135deg, $primary-dark 0%, $brand-dark 100%);
+
+    &::before {
+      left: 100%;
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+@mixin button-secondary {
+  background: $card-gradient;
+  color: $text-primary;
+  border: 2px solid $border-light;
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: white;
+    border-color: $border-active;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px $shadow-light;
+  }
+}
+
+@mixin input-base {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  border: 2px solid $border-light;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: #f7fafc;
+
+  &:focus {
+    outline: none;
+    border-color: $border-active;
+    background: white;
+    box-shadow: 0 0 0 3px rgba($primary-blue, 0.1);
+    transform: translateY(-1px);
+  }
+
+  &::placeholder {
+    color: $text-muted;
+  }
+}
+
+@mixin section-title {
+  font-size: 2.5rem;
+  color: $text-primary;
+  text-align: center;
+  margin-bottom: 2rem;
+  font-weight: 700;
+}
+
+@mixin grid-responsive($min-width: 280px) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax($min-width, 1fr));
+  gap: 2rem;
+}
+
+// Loading animation
+@mixin loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid $border-light;
+  border-top: 4px solid $primary-blue;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+// Error styling
+@mixin error-section {
+  background: #fee;
+  border: 2px solid #fcc;
+  color: #a00;
+  padding: 1.5rem;
+  border-radius: 10px;
+  margin: 1rem 0;
+
+  h3 {
+    color: #800;
+    margin-bottom: 1rem;
+  }
+
+  p {
+    margin: 0.5rem 0;
+  }
+}
+
+// Success styling
+@mixin success-section {
+  background: #efe;
+  border: 2px solid #cfc;
+  color: #060;
+  padding: 1.5rem;
+  border-radius: 10px;
+  margin: 1rem 0;
+}
+
+// Table styling
+@mixin table-base {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px $shadow-light;
+
+  th,
+  td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid $border-light;
+  }
+
+  th {
+    background: $card-gradient;
+    color: $text-primary;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  td {
+    color: $text-secondary;
+  }
+
+  tr:hover {
+    background: rgba($primary-blue, 0.05);
+  }
+
+  tr:nth-child(even) {
+    background: rgba($light-gray-1, 0.3);
+
+    &:hover {
+      background: rgba($primary-blue, 0.08);
+    }
+  }
+}
+
+// Mobile responsiveness breakpoints
+@mixin mobile {
+  @media (max-width: 768px) {
+    @content;
+  }
+}
+
+@mixin mobile-small {
+  @media (max-width: 480px) {
+    @content;
+  }
+}
+
+// Mobile adaptations
+@mixin mobile-container {
+  @include mobile {
+    padding: 1rem;
+  }
+}
+
+@mixin mobile-hero {
+  @include mobile {
+    padding: 2rem 1rem;
+
+    h1 {
+      font-size: 2.5rem;
+    }
+  }
+
+  @include mobile-small {
+    h1 {
+      font-size: 2rem;
+    }
+  }
+}
+
+@mixin mobile-grid {
+  @include mobile {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+@mixin mobile-card {
+  @include mobile {
+    padding: 1.5rem;
+  }
+}

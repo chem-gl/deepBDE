@@ -1,0 +1,602 @@
+<div class="home-container">
+  <header class="hero-section">
+    <h1>DeepBDE</h1>
+    <p class="subtitle">
+      Graph Neural Network for Bond Dissociation Enthalpies
+    </p>
+    <p class="description">
+      A web tool based on a Graph Neural Network (GNN) that quickly and
+      accurately predicts bond dissociation enthalpies (BDE) in organic
+      molecules using SMILES representations
+    </p>
+    <div class="citation-section">
+      <p class="citation-text">
+        Based on the official implementation of
+        <a href="https://github.com/MSRG/DeepBDE/" target="_blank" rel="noopener noreferrer" class="github-link">
+          DeepBDE (MSRG/DeepBDE)
+        </a>
+      </p>
+    </div>
+  </header>
+
+  <section class="analysis-section">
+    <div class="mode-selector">
+      <button (click)="setMode('smiles')" [class.active]="selectedMode === 'smiles'" class="mode-btn">
+        SMILES Analysis
+      </button>
+      <button (click)="setMode('fragments')" [class.active]="selectedMode === 'fragments'" class="mode-btn">
+        Draw Molecule
+      </button>
+      <button (click)="setMode('smilesList')" [class.active]="selectedMode === 'smilesList'" class="mode-btn">
+        Batch SMILES Analysis
+      </button>
+    </div>
+
+    @if(selectedMode === 'smiles') {
+    <div class="input-section smiles-section">
+      <div class="input-group">
+        <label for="smiles-input">Enter SMILES Notation:</label>
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <input id="smiles-input" type="text" [(ngModel)]="smilesInput" placeholder="e.g., CCOc1cccc(O)c1"
+            class="smiles-input" list="smiles-history-list" />
+          <ng-container *ngIf="smilesHistory.length > 0">
+            <button type="button" title="Clear all" class="btn-secondary" style="font-size:0.8em; padding:0.2em 0.6em;"
+              (click)="smilesHistory=[]; saveSmilesHistory();">🗑️</button>
+          </ng-container>
+        </div>
+        <datalist id="smiles-history-list">
+          <option *ngFor="let item of smilesHistory" [value]="item"></option>
+        </datalist>
+        <small class="help-text">
+          Enter a valid SMILES string for a single molecule (no dots "." allowed for fragments)
+        </small>
+      </div>
+      <div class="action-buttons" style="display: flex; justify-content: center;">
+        <button class="btn-primary" (click)="getMoleculeData()" [disabled]="!smilesInput.trim() || loadingInfo">
+          {{ loadingInfo ? 'Analyzing...' : 'Get Molecule Info' }}
+        </button>
+      </div>
+    </div>
+    }
+    <div class="draw-section">
+      @if(selectedMode === 'fragments') {
+      <h3>Draw Your Molecule</h3>
+      <p class="draw-help">Use the molecular editor below to draw your molecule structure.</p>
+      <div class="draw-warning help-text">
+        <small>⚠️ Please draw only ONE connected molecule. Disconnected fragments will be rejected.</small>
+      </div>}
+      <iframe #ketcherFrame src="ketcher/index.html" width="100%" height="700" frameborder="0"
+        [hidden]="selectedMode !== 'fragments'"></iframe>
+      @if(selectedMode === 'fragments') {
+      <div class="draw-actions">
+        <button (click)="getSmiles()" class="btn-secondary" [disabled]="">
+          📋 Get SMILES from Drawing
+        </button>
+        <button (click)="reloadKetcher()" class="btn-secondary" title="Reload molecular editor">
+          🔄 Reload Editor
+        </button>
+        @if(smiles) {
+        <button (click)="analyzeMoleculeFromDrawing()" class="btn-primary" [disabled]="loadingInfo">
+          {{ loadingInfo ? 'Analyzing...' : '🔬 Analyze Molecule' }}
+        </button>
+        }
+      </div>
+      @if(smiles) {
+      <div class="smiles-display">
+        <h4>Generated SMILES:</h4>
+        <div class="smiles-box">
+          <code>{{ smiles }}</code>
+          <span (click)="copySmilesToClipboard()" class="btn-copy" title="Copy to clipboard">📋</span>
+        </div>
+      </div>
+      }
+
+      }
+    </div>
+    @if(selectedMode === 'smilesList') {
+    <div class="smiles-list-section">
+      <h3>Upload or add a SMILES list</h3>
+      <div class="smiles-list-actions">
+        <div class="smiles-list-row">
+          <input type="file" accept=".txt,.smiles,.smi,.smile" (change)="onSmilesFileUpload($event)"
+            class="smiles-file-input" />
+          <input type="text" [(ngModel)]="smilesListInput" placeholder="Add SMILES" class="smiles-input" />
+          <button class="btn-add" (click)="addSmilesToList()" [disabled]="!smilesListInput.trim()">add</button>
+        </div>
+      </div>
+      @if(smilesList.length > 0) {
+      <table class="smiles-table">
+        <thead>
+          <tr>
+            <th>SMILES</th>
+            <th></th>
+            <th>Preview</th>
+            <th>Remove</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of smilesList; trackBy: trackSmiles">
+            <td><code>{{ item.smiles }}</code></td>
+            <td>
+              <ng-container *ngIf="item.valid === true">
+                <span style="color:green; font-size:1.1em;">✔️</span>
+              </ng-container>
+              <ng-container *ngIf="item.valid === false">
+                <span style="color:red; font-size:1.1em;">❌</span>
+              </ng-container>
+              <ng-container *ngIf="item.valid === null">
+                <span style="color:gray; font-size:1.1em;">⏳</span>
+              </ng-container>
+            </td>
+            <td>
+              @if(item.valid === true) {
+              <div class="noButton" (click)="openSmilesPreview(item)">🔍</div>
+              } @else {
+              No Preview Available
+              }
+            </td>
+            <td>
+              <div class="noButton" (click)="removeSmilesFromList(item)">🗑️</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      }
+      <div class="modal-preview" *ngIf="previewModalOpen" (click)="closePreviewModal()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <button class="modal-close" (click)="closePreviewModal()">✕</button>
+          <div class="modal-svg" [innerHTML]="previewSvg">
+          </div>
+        </div>
+      </div>
+
+    </div>
+    @if(loadingBDE) {
+    <div class="loading-indicator">
+      <img src="/ball-triangle.svg" alt="Loading..." />
+    </div>
+    }@else{
+    <button class="btn-primary" (click)="analyzeSmilesList()" [disabled]="!hasValidSmiles()"
+      style="display: block; margin: 10px auto; text-align: center;">
+      Get BDE for all valid SMILES ({{ getValidSmilesCount() }})
+    </button>
+    }
+    }
+
+
+    @if(allBDEResults.length > 0 && !loadingBDE && selectedMode === 'smilesList') {
+
+    <div *ngIf="allBDEResults.length > 0" class="download-section">
+      <span class="noButton " (click)="downloadReports('smiles')">
+        Download SMILES Reports (ZIP)
+      </span>
+      <span class="noButton " (click)="downloadReports('xyz')" style="margin-left: 1rem;">
+        Download XYZ Reports (ZIP)
+      </span>
+      <span class="noButton " (click)="downloadBatchBdeTableCSV()" style="margin-left: 1rem;">
+        📊 Download BDE Results Table (CSV)
+      </span>
+
+    </div>
+    <div class="noButton2" (click)="toggleResults()">
+      {{ showResults ? 'Hide Results' : 'Show Results' }}
+    </div>
+    <div class="bde-results-section-scroll">
+      @if(allBDEResults && allBDEResults.length > 0 && allBDEResults.length < 1000 && showResults) { <div
+        *ngFor="let result of allBDEResults" class="bde-results-section">
+        <h3 class="molecular-title">Molecule: {{ result.smiles }}</h3>
+        <div class="molecule-image">
+          <div [class.fullscreen]="result.zoomPan?.isFullscreen" class="svg-display">
+            <button *ngIf="result.zoomPan?.isFullscreen" (click)="toggleFullscreen(result)"
+              class="close-fullscreen-btn">✕</button>
+            <div class="svg-content">
+              <div [innerHTML]="result.sanitizedSvg" class="svg-content" [style.transform]="getTransform(result)"
+                (mousedown)="startPan(result, $event)" (mousemove)="onPan(result, $event)" (mouseup)="endPan(result)"
+                (mouseleave)="endPan(result)" (wheel)="onWheel(result, $event)">
+              </div>
+            </div>
+          </div>
+          <div class="image-controls">
+            <button (click)="zoomIn(result)" class="control-btn" title="Zoom In">🔍+</button>
+            <button (click)="zoomOut(result)" class="control-btn" title="Zoom Out">🔍-</button>
+            <button (click)="resetZoom(result)" class="control-btn" title="Original Size">↻</button>
+            <button (click)="toggleFullscreen(result)" class="control-btn" title="Fullscreen">⛶</button>
+            <button (click)="downloadImage(result)" class="control-btn" title="Download Image">
+              ⬇ SVG Image
+            </button>
+            <button (click)="downloadSmiles(result)" class="control-btn" title="Download SMILES">
+              📄 Download SMILES??
+            </button>
+            <button (click)="downloadXyz(result)" class="control-btn" title="Download XYZ">
+              🧪 Download XYZ
+            </button>
+          </div>
+        </div>
+        <div class="bde-table-container">
+          <div class="batch-filter-controls" style="display:flex; gap:1rem; flex-wrap:wrap; margin:0 0 0.6rem 0;">
+            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+              <input type="checkbox" [(ngModel)]="removeDuplicatedAdjacent" />
+              <span>Remove duplicated adjacent bonds</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+              <input type="checkbox" [(ngModel)]="hideNaBonds" />
+              <span>Hide N/A values</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+              <input type="checkbox" [(ngModel)]="showFragments" />
+              <span>Show fragments</span>
+            </label>
+          </div>
+          <table class="bde-table">
+            <thead>
+              <tr>
+                <th (click)="changeSort('idx')" style="cursor:pointer;">Bond Index {{ sortIndicator('idx') }}</th>
+                <th (click)="changeSort('bond_atoms')" style="cursor:pointer;">Bond Atoms {{ sortIndicator('bond_atoms') }}</th>
+                <th (click)="changeSort('bde')" style="cursor:pointer;">DeepBDE (kcal/mol) {{ sortIndicator('bde') }}</th>
+                <th>Fitting Data (kcal/mol)</th>
+                @if(showFragments) {
+                <th>Fragment 1</th>
+                <th>Fragment 2</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let bond of getFilteredBonds(result)">
+                <td>{{ bond.idx }}</td>
+                <td>{{ bond.bond_atoms }}</td>
+                <td>{{ bond.bde !== null ? bond.bde.toFixed(2) : 'N/A' }}</td>
+                <td>{{ bond.fittingDataValue !== null && bond.fittingDataValue !== undefined ? bond.fittingDataValue.toFixed(2) : '-' }}
+                </td>
+                @if(showFragments) {
+                <td class="fragment-cell" (click)="openFragmentModal(bond.frag1 || '')" style="cursor: pointer; padding: 0.5rem;">
+                  <div class="fragment-preview">
+                    @if(bond.frag1 && bond.frag1 !== '-') {
+                    <div class="fragment-svg" [innerHTML]="bond.frag1Svg"></div>
+                    <div class="fragment-smiles">{{ bond.frag1 }}</div>
+                    } @else {
+                    <span>-</span>
+                    }
+                  </div>
+                </td>
+                <td class="fragment-cell" (click)="openFragmentModal(bond.frag2 || '')" style="cursor: pointer; padding: 0.5rem;">
+                  <div class="fragment-preview">
+                    @if(bond.frag2 && bond.frag2 !== '-') {
+                    <div class="fragment-svg" [innerHTML]="bond.frag2Svg"></div>
+                    <div class="fragment-smiles">{{ bond.frag2 }}</div>
+                    } @else {
+                    <span>-</span>
+                    }
+                  </div>
+                </td>
+                }
+              </tr>
+            </tbody>
+          </table>
+        </div>
+    </div>
+    }
+</div>
+}
+</section>
+<!-- Loading Section -->
+@if(loadingInfo) {
+<div class="loading-section">
+  <div class="spinner"></div>
+  <p>Getting molecular information...</p>
+</div>
+}
+<!-- Results Section -->
+@if(svgImage) {
+<div class="results-section">
+  <h2 class="molecular-title">Molecular Structure</h2>
+
+  <div class="image-actions">
+    <button (click)="downloadSVGFile()" class="btn-download">
+      🖼️ Download SVG
+    </button>
+    <button (click)="downloadPNGFile()" class="btn-download" style="margin-left: 0.5rem;">
+      📷 Download PNG
+    </button>
+  </div>
+  <div class="image-container">
+    <div class="image-controls">
+      <button (click)="zoomInMain()" class="control-btn" title="Zoom In">
+        🔍+
+      </button>
+      <button (click)="zoomOutMain()" class="control-btn" title="Zoom Out">
+        🔍-
+      </button>
+      <button (click)="resetZoomMain()" class="control-btn" title="Original Size">
+        ↻
+      </button>
+      <button (click)="toggleFullscreenMain()" class="control-btn" title="Fullscreen">
+        ⛶
+      </button>
+    </div>
+    <div class="draw-warning help-text">
+      <small>
+        <span
+          style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#222; margin-right:6px; vertical-align:middle;"></span>
+        Atoms
+        <span
+          style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#1976d2; margin:0 6px; vertical-align:middle;"></span>
+        Bonds
+      </small>
+    </div>
+    <div class="svg-display" [class.fullscreen]="zoomPanMain.isFullscreen" #svgContainerMain
+      (mousedown)="startPanMain($event)" (mousemove)="onPanMain($event)" (mouseup)="endPanMain()"
+      (mouseleave)="endPanMain()" (wheel)="onWheelMain($event)">
+      <!-- Close fullscreen button -->
+      @if(zoomPanMain.isFullscreen) {
+      <button (click)="toggleFullscreenMain()" class="close-fullscreen-btn" title="Close fullscreen">
+        ✕
+      </button>
+      }
+
+      <div [innerHTML]="sanitizedSvg" class="svg-content" [style.transform]="getTransformMain()">
+      </div>
+    </div>
+  </div>
+  <!-- Bond Selection Section -->
+  <h3 class="title-bond">Bond calculation options</h3>
+  <div class="bond-options-horizontal">
+    <div class="checkbox-group">
+      <label class="checkbox-label">
+        <input type="checkbox" [(ngModel)]="selectAllBonds" (change)="onSelectAllBondsChange()"
+          class="checkbox-input" />
+        <span class="checkbox-custom"></span>
+        Calculate all non-ring single bonds
+      </label>
+    </div>
+
+    <div class="custom-bonds-input" [class.disabled]="selectAllBonds">
+      <label for="custom-bonds">Select specific bonds or ranges:</label>
+      <input id="custom-bonds" type="text" [(ngModel)]="customBondsInput" placeholder="e.g., 1,2,5-8,10"
+        class="bonds-input" [disabled]="selectAllBonds" />
+    </div>
+  </div>
+  <div class="bond-help-text">
+    <small class="help-text">
+      Enter bond numbers separated by commas. Use dashes for ranges (e.g.,
+      1,2,5-8,10)
+    </small>
+  </div>
+
+  <!-- Result Format Section -->
+
+  <h3 class="title-format">Optionally, you can export the bond dissociation fragments in the following formats</h3>
+  <div class="format-checkboxes" style="justify-content: center;">
+    <div class="format-checkbox-group">
+      <label class="format-checkbox-label">
+        <input type="checkbox" [(ngModel)]="includeXyzFormat" class="format-checkbox-input" />
+        <span class="format-checkbox-custom"></span>
+        XYZ Format
+      </label>
+    </div>
+
+    <div class="format-checkbox-group">
+      <label class="format-checkbox-label">
+        <input type="checkbox" [(ngModel)]="includeSmilesFormat" class="format-checkbox-input" />
+        <span class="format-checkbox-custom"></span>
+        SMILES Format
+      </label>
+    </div>
+  </div>
+  <div class="format-help-text">
+    <small class="help-text">
+      Select one, both, or none of the additional printable formats for the BDE results
+    </small>
+  </div>
+  <div class="bde-action">
+    <button class="btn-bde" (click)="getBDE()" [disabled]="loadingBDE">
+      {{ loadingBDE ? 'Getting BDE...' : 'Get BDE' }}
+    </button>
+  </div>
+</div>
+}
+<!-- BDE Results Section -->
+
+@if(bdeResults) {
+<!-- Nuevos features seran checkbox que habilitaran si se deben quitar valores repetidos si acaso estan pegados estos al mismo atomo
+ y otro checkbox para  ocultar los  N/A -->
+<div class="bde-results-section">
+  <h2>Bond Dissociation Enthalpies Results</h2>
+  <div style="display:flex; gap:1.5rem; margin:0.5rem 0 1rem 0; flex-wrap:wrap;">
+    <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+      <input type="checkbox" [(ngModel)]="removeDuplicatedAdjacent" />
+      <span>Remove duplicated adjacent bonds (same heavy atom & value)</span>
+    </label>
+    <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+      <input type="checkbox" [(ngModel)]="hideNaBonds" />
+      <span>Hide N/A values</span>
+    </label>
+    <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+      <input type="checkbox" [(ngModel)]="showFragments" />
+      <span>Show fragments (SMILES)</span>
+    </label>
+  </div>
+  <!-- BDE Table -->
+  <div class="bde-table-container">
+    <table class="bde-table"
+      style="width:100%; border-collapse:collapse; background:white; border-radius:10px; overflow:hidden; box-shadow:0 4px 15px rgba(0,33,69,0.1);">
+      <thead>
+        <tr>
+          <th (click)="changeSort('idx')"
+            style="cursor:pointer; background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
+            Bond Index {{ sortIndicator('idx') }}</th>
+          <th (click)="changeSort('bond_atoms')"
+            style="cursor:pointer; background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
+            Bond Atoms {{ sortIndicator('bond_atoms') }}</th>
+          <th (click)="changeSort('bde')"
+            style="cursor:pointer; background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
+            DeepBDE (kcal/mol) {{ sortIndicator('bde') }}</th>
+          <th
+            style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
+            Fitting Data (kcal/mol)</th>
+            @if(showFragments) {
+          <th
+            style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
+            Fragment 1</th>
+          <th
+            style="background:linear-gradient(135deg, #efeeed 0%, #d3d1cb 100%); color:#002145; font-weight:600; font-size:0.95rem; text-transform:none; letter-spacing:0.5px;">
+            Fragment 2</th>
+            }
+        </tr>
+      </thead>
+      <tbody>
+        @for( bond of filteredBonds; track bond.idx){
+        <tr class="bde-row" style="transition:background 0.2s;">
+          <td>{{ bond.idx }}</td>
+          <td class="bond-atoms">{{ bond.bond_atoms }}</td>
+          <td class="bde-value"
+            style="background:#e3f2fd; color:#003876; font-weight:700; border-radius:6px; box-shadow:0 2px 8px rgba(78,125,194,0.08);">
+            {{ bond.bde !== null ? (bond.bde | number:'1.2-2') : 'N/A' }}
+          </td>
+          <td class="fitting-data-value"
+            style="background:#f0f4c3; color:#33691e; font-weight:700; border-radius:6px; box-shadow:0 2px 8px rgba(102,153,0,0.08);">
+            {{ bond.fittingDataValue !== null && bond.fittingDataValue !== undefined ? (bond.fittingDataValue | number:'1.2-2') :
+            '-' }}
+          </td>
+          @if(showFragments) {
+          <td class="fragment-cell" (click)="openFragmentModal(bond.frag1 || '')" style="cursor: pointer; padding: 0.5rem;">
+            <div class="fragment-preview">
+              @if(bond.frag1 && bond.frag1 !== '-') {
+              <div class="fragment-svg" [innerHTML]="bond.frag1Svg"></div>
+              <div class="fragment-smiles">{{ bond.frag1 }}</div>
+              } @else {
+              <span>-</span>
+              }
+            </div>
+          </td>
+          <td class="fragment-cell" (click)="openFragmentModal(bond.frag2 || '')" style="cursor: pointer; padding: 0.5rem;">
+            <div class="fragment-preview">
+              @if(bond.frag2 && bond.frag2 !== '-') {
+              <div class="fragment-svg" [innerHTML]="bond.frag2Svg"></div>
+              <div class="fragment-smiles">{{ bond.frag2 }}</div>
+              } @else {
+              <span>-</span>
+              }
+            </div>
+          </td>
+          }
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Export Buttons -->
+  <!-- SVG molecular structure from BDE results -->
+  @if(bdeResults.image_svg) {
+  <div class="results-section">
+    <h2 class="molecular-title">Molecular Structure (DeepBDE Predictions Only)</h2>
+    <p style="font-size: 0.9rem; color: #666; margin: 0.5rem 0 1rem 0;">
+      This image shows the molecular structure with bond annotations for DeepBDE predictions only
+    </p>
+    <div class="image-actions">
+      <button (click)="downloadSVGFile(true)" class="btn-download">
+        🖼️ Download SVG
+      </button>
+      <button (click)="downloadPNGFile(true)" class="btn-download" style="margin-left: 0.5rem;">
+        📷 Download PNG
+      </button>
+    </div>
+    <div class="image-container">
+      <div class="image-controls">
+        <button (click)="zoomInBde()" class="control-btn" title="Zoom In">
+          🔍+
+        </button>
+        <button (click)="zoomOutBde()" class="control-btn" title="Zoom Out">
+          🔍-
+        </button>
+        <button (click)="resetZoomBde()" class="control-btn" title="Original Size">
+          ↻
+        </button>
+        <button (click)="toggleFullscreenBde()" class="control-btn" title="Fullscreen">
+          ⛶
+        </button>
+      </div>
+      <div class="draw-warning help-text">
+        <small>
+          <span
+            style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#222; margin-right:6px; vertical-align:middle;"></span>
+          Atoms
+          <span
+            style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#1976d2; margin:0 6px; vertical-align:middle;"></span>
+          BDE value
+        </small>
+      </div>
+      <div class="svg-display" [class.fullscreen]="zoomPanBde.isFullscreen" #svgContainerBde
+        (mousedown)="startPanBde($event)" (mousemove)="onPanBde($event)" (mouseup)="endPanBde()"
+        (mouseleave)="endPanBde()" (wheel)="onWheelBde($event)">
+        <!-- Close fullscreen button -->
+        @if(zoomPanBde.isFullscreen) {
+        <button (click)="toggleFullscreenBde()" class="close-fullscreen-btn" title="Close fullscreen">
+          ✕
+        </button>
+        }
+
+        <div class="svg-content" [innerHTML]="bdeResultsSanitizedSvg" [style.transform]="getTransformBde()">
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+  <div class="export-actions">
+    <h3>Export Data</h3>
+    <div class="export-buttons">
+      @if(bdeResults.smiles_list && bdeResults.smiles_list.length > 0){
+      <button (click)="downloadSmilesData()" class="btn-export">
+        📄 Download BDE fragment SMILES
+      </button>
+      }
+      @if(bdeResults.xyz_block){
+      <button (click)="downloadXyzData()" class="btn-export">
+        🧪 Download BDE fragment XYZ
+      </button>
+      }
+      <button (click)="downloadBdeTableCSV()" class="btn-export">
+        📊 Download this Table (CSV)
+      </button>
+    </div>
+  </div>
+</div>
+}
+@if(error) {
+<div class="error-section">
+  <h3>⚠️ Error</h3>
+  <div class="error-message">
+    <p>{{ error }}</p>
+    @if(error.includes('multiple fragments') || error.includes('dots')) {
+    <div class="error-help">
+      <strong>Tip:</strong> Make sure to draw a single connected molecule.
+      If you see disconnected parts, use bonds to connect them or remove the extra fragments.
+    </div>
+    }
+  </div>
+</div>
+}
+<footer class="footer-section">
+  <p>
+    &copy; {{ currentYear }} DeepBDE. All rights reserved.
+  </p>
+</footer>
+<!-- Fragment Modal -->
+@if(fragmentModalOpen) {
+<div class="fragment-modal" (click)="closeFragmentModal()">
+  <div class="fragment-modal-content" (click)="$event.stopPropagation()">
+    <button class="fragment-modal-close" (click)="closeFragmentModal()" aria-label="Close">
+      ✕
+    </button>
+    <h3 class="fragment-modal-title">Fragment Structure</h3>
+    @if(fragmentModalSvg) {
+    <div class="fragment-modal-svg" [innerHTML]="fragmentModalSvg"></div>
+    }
+    <div class="fragment-modal-smiles">
+      <strong>SMILES:</strong>
+      <code>{{ fragmentModalSmiles }}</code>
+    </div>
+  </div>
+</div>
+}
+</div>
