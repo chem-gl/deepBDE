@@ -1,0 +1,15 @@
+# Uso: docker compose -f compose.yml -f compose.prod.yml up -d --build
+services:
+  backend:
+    ports: !override
+      - "127.0.0.1:8002:8000"
+    restart: unless-stopped
+
+  web:
+    ports: !override
+      - "127.0.0.1:8082:80"
+    restart: unless-stopped
+
+  redis:
+    ports: !reset []
+    restart: unless-stopped

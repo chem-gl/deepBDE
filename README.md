@@ -22,6 +22,15 @@ docker compose up --build     # web en http://localhost:8080, api en :8000
 
 `apps/api/compose.yml` esta deprecated; usa el compose raiz.
 
+## Despliegue (plata)
+```bash
+git clone https://github.com/chem-gl/deepBDE.git && cd deepBDE
+cp .env.example .env  # ajusta SECRET_KEY y variables de producción
+docker compose -f compose.yml -f compose.prod.yml up -d --build
+```
+Nginx del host debe proxear el dominio a `127.0.0.1:8082`.
+Configura el certificado TLS con Certbot en el host.
+
 El contexto de build usa `.dockerignore` raiz (excluye `.env`, `.git`, `node_modules`,
 `dist`, `.venv`, `apps/api/deepbde`, `.scannerwork`, etc.).
 

@@ -10,18 +10,35 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 from corsheaders.defaults import default_headers  # ←
+from django.core.exceptions import ImproperlyConfigured
 
 # Carga las variables del archivo .env en la raíz del proyecto
 load_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-wl%9)v)rt7ol#b$r!_3rpte%ph__@@8sbr7^411ks9uv+i@^!k'
-
 # Para desarrollo local, puedes activar DEBUG vía .env
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '').split(',')
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY and DEBUG:
+    SECRET_KEY = 'django-insecure-wl%9)v)rt7ol#b$r!_3rpte%ph__@@8sbr7^411ks9uv+i@^!k'
+elif not SECRET_KEY:
+    raise ImproperlyConfigured('SECRET_KEY must be set when DEBUG=False')
+
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv('DJANGO_ALLOWED_HOSTS', '').split(',')
+    if host.strip()
+]
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origin.strip()
+]
+
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 INSTALLED_APPS = [
     'corsheaders',                   # ← habilita django-cors-headers
@@ -154,11 +171,7 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
     if origin.strip()
-] or [
-    'http://localhost:4200',
-    'https://test1.guzman-lopez.com',
-    'https://test2.guzman-lopez.com',
-]
+] or (['http://localhost:4200'] if DEBUG else [])
 
 # Permitir envío de cookies / credenciales
 CORS_ALLOW_CREDENTIALS = True
