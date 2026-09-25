@@ -1,0 +1,21 @@
+# Serena: backend Django de DeepBDE (apps/api).
+# Excluir el submodulo deepbde/** (codigo de upstream, no se edita aqui).
+
+project_name: "deepbde-api"
+
+language_servers:
+- python
+
+encoding: "utf-8"
+
+ignore_all_files_in_gitignore: true
+
+ls_workspace_folders:
+- "."
+
+ignored_paths:
+- "deepbde/**"
+- ".venv/**"
+- "**/migrations/**"
+
+read_only: false

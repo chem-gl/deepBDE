@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  web:
+    name: Web (typecheck)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # apps/web no versiona package-lock.json (gitignored) -> npm install, no npm ci.
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+      - name: Typecheck (tsc --noEmit)
+        run: npx tsc --noEmit -p tsconfig.app.json
+
+  api-lint:
+    name: API (ruff + mypy, sin torch)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # mypy.ini usa el plugin de django-stubs; se instalan solo deps ligeras de settings
+      # (torch/rdkit/dgl quedan fuera: mypy.ini tiene ignore_missing_imports + exclude deepbde/).
+      - name: Instalar linters y deps minimas
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff mypy django-stubs \
+            "Django>=4.2" djangorestframework drf-spectacular \
+            django-cors-headers python-dotenv
+      - name: Ruff
+        run: ruff check .
+      # mypy es NO bloqueante por ahora: con strict=True hay deuda de anotaciones
+      # (errors de disallow_untyped_defs). ruff si es bloqueante.
+      - name: Mypy
+        continue-on-error: true
+        env:
+          DJANGO_SETTINGS_MODULE: predictor.settings
+        run: mypy api predictor
+
+  # Sin job de tests de API: requieren torch/dgl/rdkit y el modelo (pesados).
+  # Django corre local o via compose: docker compose up --build && python manage.py test.
+  # Sin Sonar aqui: el scanner apunta a SonarQube en localhost (scripts/sonar_scan.sh).

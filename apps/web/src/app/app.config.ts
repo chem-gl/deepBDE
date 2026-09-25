@@ -7,8 +7,9 @@ import {
   provideZoneChangeDetection,
 } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { Configuration } from '../../angular-client';
-import { ApiModule } from '../../angular-client/api.module';
+import { Configuration } from 'deepbde-client';
+import { ApiModule } from 'deepbde-client/api.module';
+import { environment } from '../environments/environment';
 import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
@@ -21,7 +22,7 @@ export const appConfig: ApplicationConfig = {
       ApiModule.forRoot(
         () =>
           new Configuration({
-            basePath: 'https://test1.guzman-lopez.com', // Cambia por tu URL real
+            basePath: environment.apiBasePath,
           })
       )
     ),

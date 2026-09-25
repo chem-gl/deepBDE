@@ -1,0 +1,36 @@
+# Entornos y secretos
+.env
+.env.local
+.venv/
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+out-tsc/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Cobertura / analisis estatico
+coverage/
+coverage.xml
+htmlcov/
+.sonar/
+.scannerwork/
+*.info
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+media/
+
+# Editores / SO
+.DS_Store
+*.swp

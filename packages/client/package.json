@@ -1,0 +1,10 @@
+{
+  "name": "deepbde-client",
+  "version": "0.0.0",
+  "description": "Angular client generado con openapi-generator 7.14.0. Source of truth del schema: apps/api/api/public/openapi.yaml (espejo: contracts/openapi.yaml). Regenerar aqui, no editar a mano.",
+  "private": true,
+  "peerDependencies": {
+    "@angular/common": ">=20.0.0",
+    "@angular/core": ">=20.0.0"
+  }
+}

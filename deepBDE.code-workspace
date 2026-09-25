@@ -1,0 +1,11 @@
+{
+  "folders": [
+    { "name": "deepBDE (root)", "path": "." },
+    { "name": "api", "path": "apps/api" },
+    { "name": "web", "path": "apps/web" }
+  ],
+  "settings": {
+    "typescript.tsdk": "apps/web/node_modules/typescript/lib",
+    "python.defaultInterpreterPath": "${workspaceFolder}/apps/api/.venv/bin/python"
+  }
+}

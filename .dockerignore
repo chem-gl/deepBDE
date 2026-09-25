@@ -1,0 +1,21 @@
+# Contexto de build Docker (raiz del monorepo, usado por compose.yml).
+# Evita enviar al daemon secretos, metadatos de git y dependencias ya instaladas.
+
+.env
+.git
+
+# Dependencias y artefactos de build (Angular/Node)
+**/node_modules
+**/dist
+**/.angular
+
+# Entornos Python
+**/.venv
+
+# Submodulo ML (se instala aparte / es pesado)
+apps/api/deepbde
+
+# DB local y reportes de analisis
+db.sqlite3
+.scannerwork
+.sonar

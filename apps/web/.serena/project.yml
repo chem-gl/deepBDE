@@ -1,0 +1,22 @@
+# Serena: frontend Angular de DeepBDE (apps/web).
+# Requiere `npm install` en apps/web para el language server de Angular.
+
+project_name: "deepbde-web"
+
+language_servers:
+- angular
+
+encoding: "utf-8"
+
+ignore_all_files_in_gitignore: true
+
+ls_workspace_folders:
+- "."
+
+ignored_paths:
+- "node_modules/**"
+- "dist/**"
+- ".angular/**"
+- "public/ketcher/**"
+
+read_only: false

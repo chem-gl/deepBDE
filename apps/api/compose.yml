@@ -1,3 +1,4 @@
+# deprecated: use repo-root compose.yml
 services:
   deepbde-backend:
     build: .

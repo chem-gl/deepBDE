@@ -132,7 +132,9 @@ dmypy.json
 docker-compose.override.yml
 
 # IDE
-.vscode/
+.vscode/*
+# versionamos la configuracion de SonarLint (projectKey deepbde-api)
+!.vscode/settings.json
 .idea/
 *.swp
 *.swo

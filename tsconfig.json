@@ -1,0 +1,11 @@
+/* tsconfig raiz del monorepo: solo enlaza los proyectos TS para editores / `tsc -b`.
+   NOTA: los tsconfig de Angular (apps/web) no marcan "composite" porque el builder de
+   Angular gestiona su propio programa; `tsc -b` sobre esta raiz fallara en esa referencia.
+   Para typecheck de apps/web usa: cd apps/web && npx tsc --noEmit -p tsconfig.app.json */
+{
+  "files": [],
+  "references": [
+    { "path": "./apps/web" },
+    { "path": "./packages/client" }
+  ]
+}

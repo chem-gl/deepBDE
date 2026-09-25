@@ -1,0 +1,11 @@
+{
+  // Configuracion del LSP de Python (pyright/Pylance) para el backend Django.
+  "include": ["api", "predictor"],
+  "exclude": ["deepbde", ".venv", "**/migrations"],
+  "extraPaths": ["deepbde"],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "standard",
+  "reportMissingImports": "warning"
+}

@@ -1,3 +1,8 @@
 {
-  "gitConfigUser.selectedProfile": "Cesar"
+  "gitConfigUser.selectedProfile": "Cesar",
+
+  "sonarlint.connectedMode.project": {
+    "connectionId": "http-localhost-9000",
+    "projectKey": "deepbde-web"
+  }
 }

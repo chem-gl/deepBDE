@@ -1,0 +1,27 @@
+# Serena: proyecto raiz del monorepo deepBDE.
+# LSPs: angular (subsume typescript) para web + python para api.
+# El submodulo deepbde y el cliente generado quedan fuera del indice.
+
+project_name: "deepbde"
+
+language_servers:
+- angular
+- python
+
+encoding: "utf-8"
+
+ignore_all_files_in_gitignore: true
+
+ls_workspace_folders:
+- "./apps/api"
+- "./apps/web"
+
+ignored_paths:
+- "apps/api/deepbde/**"
+- "packages/client/**"
+- "**/node_modules/**"
+- "**/dist/**"
+- "**/.venv/**"
+- "**/.angular/**"
+
+read_only: false

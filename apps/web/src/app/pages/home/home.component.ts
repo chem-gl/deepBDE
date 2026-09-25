@@ -13,8 +13,8 @@ import {
   MoleculeInfoRequest,
   MoleculeInfoResponseData,
   V1Service,
-} from '../../../../angular-client';
-import { PredictedBond } from '../../../../angular-client/model/predictedBond';
+} from 'deepbde-client';
+import { PredictedBond } from 'deepbde-client/model/predictedBond';
 
 // CSV BDE Override Types
 type PredictedBondWithSource = PredictedBond & {
@@ -99,15 +99,133 @@ function sanitizeSvg(svg: string, sanitizer: DomSanitizer): SafeHtml {
   );
   return sanitizer.bypassSecurityTrustHtml(cleanSvg);
 }
-function isValidSmiles(smiles: string, RDKit?: RDKitModule): boolean | null {
-  if (!smiles || smiles.trim() === '' || smiles.includes('.')) return false;
-  if (!RDKit) return null;
+const SUPPORTED_DEEPBDE_ELEMENTS = new Set([
+  'H',
+  'B',
+  'C',
+  'N',
+  'O',
+  'P',
+  'S',
+  'Cl',
+  'F',
+]);
+
+const UNSUPPORTED_ELEMENTS_ERROR =
+  'Unfortunately DeepBDE only supports molecules with H, B, C, N, O, P, S, Cl and F atoms';
+
+function normalizeElementSymbol(symbol: string): string {
+  if (!symbol) return '';
+  if (symbol.length === 1) return symbol.toUpperCase();
+  return symbol[0].toUpperCase() + symbol.slice(1).toLowerCase();
+}
+
+function extractBracketAtomSymbol(content: string): string | null {
+  const normalized = content.trim().replace(/^[0-9]+/, '');
+  if (!normalized) return null;
+  if (normalized.startsWith('*')) return '*';
+
+  const match = normalized.match(/^([A-Z][a-z]?|[a-z]{1,2})/);
+  if (!match) return null;
+
+  return normalizeElementSymbol(match[1]);
+}
+
+function getSmilesElementSymbols(smiles: string): string[] {
+  const symbols: string[] = [];
+
+  for (let index = 0; index < smiles.length; index++) {
+    const currentChar = smiles[index];
+
+    if (currentChar === '[') {
+      const closingBracketIndex = smiles.indexOf(']', index + 1);
+      if (closingBracketIndex === -1) break;
+
+      const symbol = extractBracketAtomSymbol(
+        smiles.slice(index + 1, closingBracketIndex),
+      );
+      if (symbol) {
+        symbols.push(symbol);
+      }
+      index = closingBracketIndex;
+      continue;
+    }
+
+    if (currentChar === 'C' && smiles[index + 1] === 'l') {
+      symbols.push('Cl');
+      index += 1;
+      continue;
+    }
+
+    if (currentChar === 'B' && smiles[index + 1] === 'r') {
+      symbols.push('Br');
+      index += 1;
+      continue;
+    }
+
+    if (/[BCNOPSFI]/.test(currentChar)) {
+      symbols.push(currentChar);
+      continue;
+    }
+
+    if (/[bcnops]/.test(currentChar)) {
+      symbols.push(currentChar.toUpperCase());
+      continue;
+    }
+
+    if (/[A-Z]/.test(currentChar)) {
+      const nextChar = smiles[index + 1];
+      if (nextChar && /[a-z]/.test(nextChar)) {
+        symbols.push(`${currentChar}${nextChar}`);
+        index += 1;
+      } else {
+        symbols.push(currentChar);
+      }
+    }
+  }
+
+  return symbols;
+}
+
+function hasUnsupportedDeepBdeElements(smiles: string): boolean {
+  const unsupportedElements = new Set<string>();
+
+  for (const symbol of getSmilesElementSymbols(smiles)) {
+    const normalizedSymbol = normalizeElementSymbol(symbol);
+    if (!SUPPORTED_DEEPBDE_ELEMENTS.has(normalizedSymbol)) {
+      unsupportedElements.add(normalizedSymbol);
+    }
+  }
+
+  return unsupportedElements.size > 0;
+}
+
+function getSmilesValidationError(
+  smiles: string,
+  RDKit?: RDKitModule,
+): string | null {
+  if (!smiles || smiles.trim() === '' || smiles.includes('.')) {
+    return 'Invalid SMILES.';
+  }
+
+  if (hasUnsupportedDeepBdeElements(smiles)) {
+    return UNSUPPORTED_ELEMENTS_ERROR;
+  }
+
+  if (!RDKit) {
+    return 'SMILES validator is still loading. Please try again in a moment.';
+  }
+
   try {
     const mol = RDKit.get_mol(smiles);
-    return !!mol && mol.is_valid();
+    return !!mol && mol.is_valid() ? null : 'Invalid SMILES.';
   } catch {
-    return false;
+    return 'Invalid SMILES.';
   }
+}
+
+function isValidSmiles(smiles: string, RDKit?: RDKitModule): boolean {
+  return getSmilesValidationError(smiles, RDKit) === null;
 }
 function createZoomPanState(initZoom = 1): ZoomPanState {
   return new ZoomPanState(initZoom);
@@ -884,10 +1002,12 @@ export class HomeComponent {
     const value = this.smilesListInput.trim();
     if (!value) return;
     if (this.smilesList.some((item) => item.smiles === value)) return;
+    const validationError = getSmilesValidationError(value, this.RDKit);
     this.smilesList.push({
       smiles: value,
-      valid: isValidSmiles(value, this.RDKit),
+      valid: validationError === null,
     });
+    this.error = validationError;
     this.smilesListInput = '';
   }
   public removeSmilesFromList(item: {
@@ -909,23 +1029,48 @@ export class HomeComponent {
         .split(/\r?\n/)
         .map((l) => l.trim())
         .filter((l) => l);
+      let validationError: string | null = null;
       for (const line of lines) {
         if (!this.smilesList.some((item) => item.smiles === line)) {
+          const lineValidationError = getSmilesValidationError(
+            line,
+            this.RDKit,
+          );
           this.smilesList.push({
             smiles: line,
-            valid: isValidSmiles(line, this.RDKit),
+            valid: lineValidationError === null,
           });
+          if (!validationError && lineValidationError) {
+            validationError = lineValidationError;
+          }
         }
       }
+      this.error = validationError;
     };
     reader.readAsText(file);
   }
   public async analyzeSmilesList(): Promise<void> {
-    const validSmiles = this.smilesList
-      .filter((s) => s.valid)
-      .map((s) => s.smiles);
+    const validationResults = this.smilesList.map((item) => ({
+      smiles: item.smiles,
+      validationError: getSmilesValidationError(item.smiles, this.RDKit),
+    }));
+
+    this.smilesList = this.smilesList.map((item, index) => ({
+      ...item,
+      valid: validationResults[index].validationError === null,
+    }));
+
+    const validSmiles = validationResults
+      .filter((result) => result.validationError === null)
+      .map((result) => result.smiles);
+    const hasUnsupportedElements = validationResults.some(
+      (result) => result.validationError === UNSUPPORTED_ELEMENTS_ERROR,
+    );
+
     if (validSmiles.length === 0) {
-      this.error = 'No valid SMILES in the list.';
+      this.error = hasUnsupportedElements
+        ? UNSUPPORTED_ELEMENTS_ERROR
+        : 'No valid SMILES in the list.';
       return;
     }
     this.allBDEResults = [];
@@ -1017,6 +1162,8 @@ export class HomeComponent {
       if (hadAnyError) {
         this.error =
           'Some SMILES could not be processed. Check the console for details.';
+      } else if (hasUnsupportedElements) {
+        this.error = UNSUPPORTED_ELEMENTS_ERROR;
       } else {
         this.error = null;
       }
@@ -1052,6 +1199,10 @@ export class HomeComponent {
         });
         (window as any).RDKit = this.RDKit;
         this.rdkitReady = true;
+        this.smilesList = this.smilesList.map((item) => ({
+          ...item,
+          valid: isValidSmiles(item.smiles, this.RDKit),
+        }));
       } else {
         console.warn(
           'initRDKitModule no encontrado en window. Revisa que RDKit_minimal.js esté cargado.',
@@ -1282,12 +1433,14 @@ export class HomeComponent {
       this.error = 'No molecule drawn. Please draw a molecule first.';
       return;
     }
-    if (!isValidSmiles(smilesResult, this.RDKit)) {
-      this.error = 'Invalid SMILES.';
+    const validationError = getSmilesValidationError(smilesResult, this.RDKit);
+    if (validationError) {
+      this.error = validationError;
       return;
     }
     this.smiles = smilesResult;
     this.smilesInput = this.smiles;
+    this.error = null;
   }
   private getSmilesViaPostMessage(): void {
     if (!this.ketcherFrame?.nativeElement) return;
@@ -1321,8 +1474,12 @@ export class HomeComponent {
       this.error = 'Please draw a molecule and get SMILES first';
       return;
     }
-    if (!isValidSmiles(this.smiles.trim(), this.RDKit)) {
-      this.error = 'Invalid SMILES.';
+    const validationError = getSmilesValidationError(
+      this.smiles.trim(),
+      this.RDKit,
+    );
+    if (validationError) {
+      this.error = validationError;
       return;
     }
     this.smilesInput = this.smiles;
@@ -1418,6 +1575,14 @@ export class HomeComponent {
     }
     if (!this.moleculeInfo) {
       this.error = 'Molecule information is required to get BDE';
+      return;
+    }
+    const validationError = getSmilesValidationError(
+      this.moleculeInfo.smiles_canonical,
+      this.RDKit,
+    );
+    if (validationError) {
+      this.error = validationError;
       return;
     }
     let bonds: Array<number> | null = null;
@@ -1575,16 +1740,17 @@ export class HomeComponent {
     }
     this.clearResults();
     const value = this.smilesInput.trim();
+    const validationError = getSmilesValidationError(value, this.RDKit);
+    if (validationError) {
+      this.error = validationError;
+      return;
+    }
     if (value && !this.smilesHistory.includes(value)) {
       this.smilesHistory.unshift(value);
       if (this.smilesHistory.length > 10) {
         this.smilesHistory.pop();
       }
       this.saveSmilesHistory();
-    }
-    if (!isValidSmiles(this.smilesInput.trim(), this.RDKit)) {
-      this.error = 'Invalid SMILES.';
-      return;
     }
     this.loadingInfo = true;
     this.error = null;

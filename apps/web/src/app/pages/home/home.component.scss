@@ -1,5 +1,6 @@
 @use "../../../styles/colors" as *;
 @use "../../../styles/mixins" as *;
+@use "sass:color";
 // --- SMILES List Section ---
 .smiles-list-section {
   display: flex;
@@ -441,6 +442,27 @@
 
 .error-section {
   @include error-section;
+  background: #fff3b044;
+  border: 2px solid #e0b100;
+  color: #6b5200;
+
+  h3 {
+    color: #8a6a00;
+    text-align: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .error-message {
+    color: inherit;
+  }
+
+  .error-help {
+    background: rgba(255, 255, 255, 0.45);
+    border-left: 4px solid #d49a00;
+    border-radius: 6px;
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+  }
 }
 
 .bond-options-horizontal {
@@ -527,7 +549,7 @@
   &[style*="cursor:pointer"] {
     transition: all 0.2s ease;
     &:hover {
-      background: lighten($primary-blue, 5%);
+      background: color.adjust($primary-blue, $lightness: 5%);
       transform: translateY(-1px);
     }
     &:active {
@@ -718,7 +740,7 @@
   transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   &:hover {
-    background: darken($primary-blue, 10%);
+    background: color.adjust($primary-blue, $lightness: -10%);
     transform: rotate(90deg);
   }
 }

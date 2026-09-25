@@ -8,5 +8,11 @@
   ],
 
   "python.analysis.typeCheckingMode": "standard",
+
+  "sonarlint.connectedMode.project": {
+    "connectionId": "http-localhost-9000",
+    "projectKey": "deepbde-api"
+  },
+
   "gitConfigUser.selectedProfile": "Cesar"
 }

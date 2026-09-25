@@ -1,0 +1,43 @@
+# compose.yml unico del monorepo deepBDE.
+# Uso: docker compose up --build
+# (apps/api/compose.yml queda deprecated en favor de este archivo)
+services:
+  backend:
+    build: ./apps/api
+    container_name: deepbde-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: deepbde-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: deepbde-web
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: always
+
+volumes:
+  redis_data:
