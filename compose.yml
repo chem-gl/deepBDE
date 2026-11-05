@@ -6,7 +6,8 @@ services:
     build: ./apps/api
     container_name: deepbde-backend
     ports:
-      - "8000:8000"
+      # 8001: chemistry-apps ocupa 8000 en el host; deepBDE usa 8001.
+      - "8001:8000"
     env_file:
       - .env
     restart: always
@@ -21,8 +22,9 @@ services:
   redis:
     image: redis:7.2-alpine
     container_name: deepbde-redis
-    ports:
-      - "6379:6379"
+    # Sin puertos publicados: 6379 del host lo ocupa el redis del sistema.
+    # El backend llega por red interna (redis:6379).
+    ports: !reset []
     volumes:
       - redis_data:/data
     restart: unless-stopped
